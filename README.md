@@ -37,7 +37,7 @@ This repository contains the Schubert evaluator, the main MCMC sampler for reduc
 
 - **`cftp_universality_check.cpp`** — Checks whether extremal-chain coalescence implies universal coalescence.
 
-- **`benchmark_suite.py`** — Python harness for comparing performance of descent/cotransition/transition with double/exact arithmetic.
+- **`benchmark_suite.py`** — Python harness for comparing performance of descent/cotransition/transition with double/exact arithmetic, using the bundled layered-permutation data in `data_MPP.csv`.
 
 ## Compilation
 

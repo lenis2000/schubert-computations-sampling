@@ -4,7 +4,7 @@ Performance benchmark suite for Schubert polynomial implementations.
 
 Tests all 6 implementations
 (descent_double, descent_rational, cotrans_double, cotrans_exact, transition_double, transition_exact)
-across layered permutations (MPP3 validation) and random permutations from CFTP sampler.
+across layered permutations (MPP validation) and random permutations from CFTP sampler.
 
 Usage:
     python benchmark_suite.py --list-sizes                    # Show available random sizes
@@ -56,8 +56,8 @@ VARIANT_FLAGS = {
     "transition_exact": ["--exact", "--transition"],
 }
 
-# MPP3 data file
-MPP3_DATA_FILE = PROJECT_ROOT / "data_MPP3.tex"
+# MPP layered permutation data file
+MPP_DATA_FILE = PROJECT_ROOT / "data_MPP.csv"
 
 # Default permutation directory (can be overridden via CLI)
 DEFAULT_PERMS_DIR = SCRIPT_DIR / "permutation_data"
@@ -85,7 +85,7 @@ class BinaryResult:
 
 @dataclass
 class LayeredEntry:
-    """Entry from MPP3 layered permutation data."""
+    """Entry from bundled MPP layered permutation data."""
     n: int
     layers: Tuple[int, ...]
     f_n: float  # log2(v(n)) / n^2
@@ -322,40 +322,31 @@ class BinaryRunner:
 
 
 # =============================================================================
-# MPP3 Data Loader
+# MPP Data Loader
 # =============================================================================
 
-class MPP3DataLoader:
-    """Parse layered permutation data from MPP3 paper (data_MPP3.tex)."""
+class MPPDataLoader:
+    """Load layered permutation data from the bundled CSV file."""
 
-    # Pattern: n & (layers) & f(n)
-    # e.g., "5&(1, 1, 3)&0.152294\\"
-    ENTRY_PATTERN = re.compile(r"(\d+)&\(([^)]+)\)&([0-9.]+)")
-
-    def __init__(self, data_file: Path = MPP3_DATA_FILE):
+    def __init__(self, data_file: Path = MPP_DATA_FILE):
         self.data_file = data_file
         self._cache: Dict[int, LayeredEntry] = {}
 
     def load(self) -> Dict[int, LayeredEntry]:
-        """Load all layered permutation data from the file."""
+        """Load all layered permutation data from the CSV file."""
         if self._cache:
             return self._cache
 
         if not self.data_file.exists():
-            raise FileNotFoundError(f"MPP3 data file not found: {self.data_file}")
+            raise FileNotFoundError(f"MPP data file not found: {self.data_file}")
 
         with open(self.data_file, "r") as f:
-            content = f.read()
-
-        for match in self.ENTRY_PATTERN.finditer(content):
-            n = int(match.group(1))
-            layers_str = match.group(2)
-            f_n = float(match.group(3))
-
-            # Parse layers tuple (comma-separated integers)
-            layers = tuple(int(x.strip()) for x in layers_str.split(","))
-
-            self._cache[n] = LayeredEntry(n=n, layers=layers, f_n=f_n)
+            reader = csv.DictReader(f)
+            for row in reader:
+                n = int(row["n"])
+                layers = tuple(json.loads(row["layers"]))
+                f_n = float(row["expected_f_n"])
+                self._cache[n] = LayeredEntry(n=n, layers=layers, f_n=f_n)
 
         return self._cache
 
@@ -492,7 +483,7 @@ class BenchmarkRunner:
             name: BinaryRunner(name, flags)
             for name, flags in VARIANT_FLAGS.items()
         }
-        self.mpp3_loader = MPP3DataLoader()
+        self.mpp_loader = MPPDataLoader()
 
     def check_deadline(self) -> bool:
         """Return True if deadline exceeded."""
@@ -525,10 +516,10 @@ class BenchmarkRunner:
         return result
 
     def benchmark_layered(self, max_n: int = 16, selected_binaries: Optional[List[str]] = None, timeout: Optional[float] = None) -> List[Dict]:
-        """Benchmark on MPP3 layered permutations for validation and timing."""
+        """Benchmark on bundled MPP layered permutations for validation and timing."""
         self.log(f"=== Layered Permutation Benchmark (n=1..{max_n}) ===")
 
-        mpp3_data = self.mpp3_loader.load()
+        mpp_data = self.mpp_loader.load()
         results = []
 
         # Filter runners if specific binaries selected
@@ -536,14 +527,14 @@ class BenchmarkRunner:
                          if selected_binaries is None or k in selected_binaries}
 
         for n in range(1, max_n + 1):
-            entry = mpp3_data.get(n)
+            entry = mpp_data.get(n)
             if not entry:
-                self.log(f"  n={n}: No MPP3 data available")
+                self.log(f"  n={n}: No MPP data available")
                 continue
 
             # Convert layers to permutation
-            perm = MPP3DataLoader.layers_to_permutation(entry.layers)
-            perm_str = MPP3DataLoader.permutation_to_string(perm)
+            perm = MPPDataLoader.layers_to_permutation(entry.layers)
+            perm_str = MPPDataLoader.permutation_to_string(perm)
 
             # Compute ell(w) = number of inversions
             ell = sum(1 for i in range(len(perm)) for j in range(i+1, len(perm)) if perm[i] > perm[j])
