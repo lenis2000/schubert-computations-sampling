@@ -17,6 +17,7 @@ cftp_universality_check
 # Output files
 *.png
 *.csv
+!data_MPP.csv
 *.log
 benchmark_results/
 permutation_data/

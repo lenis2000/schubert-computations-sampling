@@ -845,6 +845,16 @@ def main():
             print(f"No permutation files found in {args.perms_dir}")
         return
 
+    # Default to --all if no specific benchmark is selected
+    if not (args.layered or args.random or args.all):
+        args.all = True
+
+    # Fail fast when the unified binary has not been compiled yet.
+    if (args.layered or args.random or args.all) and not UNIFIED_BINARY.exists():
+        print(f"Error: Unified binary not found: {UNIFIED_BINARY}")
+        print("Compile it first (see README.md).")
+        sys.exit(1)
+
     # Validate random-size if random benchmark is requested
     if args.random or args.all:
         if args.random_size is None:
@@ -858,10 +868,6 @@ def main():
             print(f"Error: --random-size {args.random_size} not available.")
             print(f"Available sizes: {sorted(available_sizes.keys())}")
             sys.exit(1)
-
-    # Default to --all if no specific benchmark is selected
-    if not (args.layered or args.random or args.all):
-        args.all = True
 
     # Ensure output directory exists
     args.output_dir.mkdir(parents=True, exist_ok=True)
