@@ -79,7 +79,7 @@ void print_height(const std::vector<int>& h, int n) {
 }
 
 // =============================================================================
-// BPD Engine (core logic from bpd_sampler.cpp, with height check instrumentation)
+// BPD Engine (core logic from bpd_mcmc.cpp, with height check instrumentation)
 // =============================================================================
 
 class BPDEngine {
@@ -202,7 +202,7 @@ public:
         return ww;
     }
 
-    // --- Local moves (same as bpd_sampler.cpp) ---
+    // --- Local moves (same as bpd_mcmc.cpp) ---
 
     inline bool try_drip(std::vector<uint8_t>& grid, int i, int j) {
         uint8_t nw = get(grid, i-1, j-1), ne = get(grid, i-1, j);

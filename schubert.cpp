@@ -47,7 +47,7 @@ using uint128_t = unsigned __int128;
 // =============================================================================
 
 constexpr int MAX_N = 25;  // 25 * 5 bits = 125 bits < 128 bits
-constexpr int DEFAULT_THREADS = 6;  // M2 has 6 performance cores
+static const int DEFAULT_THREADS = std::max(1, (int)std::thread::hardware_concurrency());
 
 // Memoization hard caps - balance cache-friendliness vs recomputation
 // For single-formula runs targeting ~12GB RAM:

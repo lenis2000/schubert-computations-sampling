@@ -288,7 +288,7 @@ def main():
     for binary, name in [(SCHUBERT_BIN, "schubert"), (MCMC_BIN, "bpd_mcmc")]:
         if not os.path.exists(binary):
             print(f"Error: {name} binary not found at {binary}")
-            print(f"Compile it first (see CLAUDE.md)")
+            print(f"Compile it first (see README.md)")
             sys.exit(1)
 
     configs = [

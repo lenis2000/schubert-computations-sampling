@@ -15,8 +15,6 @@ This repository contains the Schubert evaluator, the main MCMC sampler for reduc
 
 - **`bpd_mcmc.cpp`** — MCMC sampler for uniformly random reduced bumpless pipe dreams (RBPDs). Uses local 2x2 flips and rectangular droop/undroop moves. Outputs permuton data, height functions, and individual permutations.
 
-- **`bpd_cftp_sampler.cpp`** — Experimental backward-CFTP sampler retained for the paper's negative-result and comparison experiments. This is diagnostic code, not the recommended production sampler; for actual sampling runs use `bpd_mcmc.cpp`.
-
 ### Validation and diagnostics
 
 - **`uniformity_test.py`** — Small-$n$ validation of the MCMC stationary distribution using chi-squared and total variation tests.
@@ -43,67 +41,91 @@ This repository contains the Schubert evaluator, the main MCMC sampler for reduc
 
 ## Compilation
 
-All C++ programs require C++17. External dependencies are noted below.
+All C++ programs require a C++17 compiler (`clang++` or `g++`). Each program is a single self-contained `.cpp` file. External dependencies are noted below.
+
+### Python scripts
+
+Python 3.7+ is required. Optional: `scipy` (for exact chi-squared p-values in `uniformity_test.py`). No other Python packages are needed.
 
 ### schubert.cpp
 
-Requires GMP (GNU Multiple Precision Arithmetic Library).
+Requires [GMP](https://gmplib.org/) (GNU Multiple Precision Arithmetic Library) and [Boost.Multiprecision](https://www.boost.org/doc/libs/release/libs/multiprecision/) (header-only).
 
 ```bash
-# macOS (Apple Silicon):
-clang++ -O3 -mcpu=apple-m2 -flto -std=c++17 -pthread \
+# macOS (Homebrew):
+clang++ -O3 -std=c++17 -pthread -flto \
   -I/opt/homebrew/include -L/opt/homebrew/lib \
   schubert.cpp -o schubert -lgmp -lgmpxx
 
 # Linux:
-g++ -O3 -march=native -flto -std=c++17 -pthread \
+g++ -O3 -std=c++17 -march=native -pthread -flto \
   schubert.cpp -o schubert -lgmp -lgmpxx
 ```
 
+Install dependencies: `brew install gmp boost` (macOS) or `apt install libgmp-dev libboost-dev` (Debian/Ubuntu).
+
 ### bpd_mcmc.cpp
 
-Requires libpng. Optional: OpenMP for parallel batch mode.
+Requires [libpng](http://www.libpng.org/). Optional: OpenMP for parallel batch mode.
 
 ```bash
 # Single-threaded (macOS):
-clang++ -O3 -std=c++17 -mcpu=apple-m2 -flto \
-  -I/opt/homebrew/opt/libpng/include/libpng16 -L/opt/homebrew/opt/libpng/lib \
-  bpd_mcmc.cpp -o bpd_mcmc -lpng16
+clang++ -O3 -std=c++17 -flto \
+  -I/opt/homebrew/opt/libpng/include -L/opt/homebrew/opt/libpng/lib \
+  bpd_mcmc.cpp -o bpd_mcmc -lpng
 
-# Multi-threaded (macOS with OpenMP):
-clang++ -O3 -std=c++17 -mcpu=apple-m2 -Xclang -fopenmp \
-  -L/opt/homebrew/opt/libomp/lib -I/opt/homebrew/opt/libomp/include -lomp \
-  -I/opt/homebrew/opt/libpng/include/libpng16 -L/opt/homebrew/opt/libpng/lib \
-  bpd_mcmc.cpp -o bpd_mcmc -lpng16
+# Multi-threaded (macOS with OpenMP via Homebrew):
+clang++ -O3 -std=c++17 -Xclang -fopenmp \
+  -I/opt/homebrew/opt/libomp/include -L/opt/homebrew/opt/libomp/lib -lomp \
+  -I/opt/homebrew/opt/libpng/include -L/opt/homebrew/opt/libpng/lib \
+  bpd_mcmc.cpp -o bpd_mcmc -lpng
 
 # Multi-threaded (Linux):
 g++ -O3 -std=c++17 -march=native -flto -fopenmp \
   bpd_mcmc.cpp -o bpd_mcmc -lpng
 ```
 
+Install dependencies: `brew install libpng libomp` (macOS) or `apt install libpng-dev` (Debian/Ubuntu).
+
 ### bpd_cftp_sampler.cpp
 
-Requires libpng. Optional: OpenMP for batch mode.
+Requires libpng (same as `bpd_mcmc.cpp`). Optional: OpenMP for batch mode.
 
 ```bash
-# Single-threaded:
-clang++ -O3 -std=c++17 bpd_cftp_sampler.cpp -o bpd_cftp_sampler -lpng
+# Single-threaded (macOS):
+clang++ -O3 -std=c++17 \
+  -I/opt/homebrew/opt/libpng/include -L/opt/homebrew/opt/libpng/lib \
+  bpd_cftp_sampler.cpp -o bpd_cftp_sampler -lpng
 
-# With OpenMP:
+# With OpenMP (macOS):
 clang++ -O3 -std=c++17 -Xclang -fopenmp \
-  -L/opt/homebrew/opt/libomp/lib -I/opt/homebrew/opt/libomp/include -lomp \
+  -I/opt/homebrew/opt/libomp/include -L/opt/homebrew/opt/libomp/lib -lomp \
+  -I/opt/homebrew/opt/libpng/include -L/opt/homebrew/opt/libpng/lib \
+  bpd_cftp_sampler.cpp -o bpd_cftp_sampler -lpng
+
+# Linux:
+g++ -O3 -std=c++17 -march=native -flto -fopenmp \
   bpd_cftp_sampler.cpp -o bpd_cftp_sampler -lpng
 ```
 
-### Verification tools
+### Verification and diagnostic tools
 
-These are self-contained (no external libraries):
+These are self-contained (no external libraries beyond the C++17 standard library):
 
 ```bash
-# Example:
-clang++ -O3 -std=c++17 monotonicity_check.cpp -o monotonicity_check
-clang++ -O3 -std=c++17 bpd_connectivity_check.cpp -o bpd_connectivity_check
-clang++ -O3 -std=c++17 cftp_diagnostic.cpp -o cftp_diagnostic
+# macOS:
+for f in monotonicity_check bpd_connectivity_check cftp_diagnostic \
+         cftp_bias_test cftp_universality_check explore_allowed_moves \
+         verify_connectivity_proof; do
+  clang++ -O3 -std=c++17 ${f}.cpp -o ${f}
+done
+
+# Linux:
+for f in monotonicity_check bpd_connectivity_check cftp_diagnostic \
+         cftp_bias_test cftp_universality_check explore_allowed_moves \
+         verify_connectivity_proof; do
+  g++ -O3 -std=c++17 -march=native ${f}.cpp -o ${f}
+done
 ```
 
 ## Usage examples
@@ -129,6 +151,8 @@ clang++ -O3 -std=c++17 cftp_diagnostic.cpp -o cftp_diagnostic
 ```
 
 ### MCMC sampling of reduced BPDs
+
+Note: `bpd_mcmc` appends a log of each run (command line and output files) to `bpd_mcmc_runs.log` in the working directory.
 
 ```bash
 # Single sample with PNG output:
@@ -184,24 +208,6 @@ python3 uniformity_test.py
 ./verify_connectivity_proof --all 7
 ```
 
-## Suggested Paper Paragraph
-
-If the public repository is meant to match the current file layout, a more accurate code-availability paragraph is:
-
-```tex
-\subsection{Code availability}
-\label{sec:code}
-
-\textcolor{blue}{The public code repository accompanying this paper is available at
-\textit{[repository URL]}. It includes \texttt{schubert.cpp} (three formulas for
-computing principal specializations, together with exact and heuristic max search),
-\texttt{bpd\_mcmc.cpp} (the MCMC sampler for reduced bumpless pipe dreams),
-\texttt{bpd\_cftp\_sampler.cpp} (experimental backward-CFTP code retained for the
-paper's negative-result and comparison experiments), validation and diagnostic tools
-for the CFTP failure results (Tables~3--5), and computational tools for RBPD
-connectivity.}
-```
-
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE) for the full text.

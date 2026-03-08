@@ -1,1 +1,29 @@
-/__pycache__
+# Compiled binaries
+schubert
+bpd_mcmc
+bpd_cftp_sampler
+bpd_connectivity_check
+explore_allowed_moves
+verify_connectivity_proof
+monotonicity_check
+cftp_bias_test
+cftp_diagnostic
+cftp_universality_check
+
+# Build artifacts
+*.o
+*.dSYM/
+
+# Output files
+*.png
+*.csv
+*.log
+benchmark_results/
+permutation_data/
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store

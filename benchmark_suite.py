@@ -25,13 +25,12 @@ import argparse
 import csv
 import json
 import math
-import os
 import platform
 import re
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -42,7 +41,7 @@ from typing import Dict, List, Optional, Tuple
 # =============================================================================
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
-PROJECT_ROOT = SCRIPT_DIR.parent
+PROJECT_ROOT = SCRIPT_DIR
 RESULTS_DIR = SCRIPT_DIR / "benchmark_results"
 
 # Unified binary path and variant flags
@@ -61,7 +60,7 @@ VARIANT_FLAGS = {
 MPP3_DATA_FILE = PROJECT_ROOT / "data_MPP3.tex"
 
 # Default permutation directory (can be overridden via CLI)
-DEFAULT_PERMS_DIR = Path("/Users/leo/notes/content/2025-12/2025-12-10-schubert-sampler/results")
+DEFAULT_PERMS_DIR = SCRIPT_DIR / "permutation_data"
 
 
 # =============================================================================

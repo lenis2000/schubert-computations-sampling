@@ -220,7 +220,7 @@ int countContacts(const std::vector<int>& hX, const std::vector<int>& hY, int n)
 }
 
 // ============================================================================
-// BPD Moves (same as bpd_sampler.cpp)
+// BPD Moves (same as bpd_mcmc.cpp)
 // ============================================================================
 
 bool tryDrip(BPD& b, int i, int j) {
