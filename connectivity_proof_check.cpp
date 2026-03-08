@@ -13,11 +13,11 @@
 //
 // Compile:
 //   clang++ -O3 -std=c++17 -mcpu=apple-m2 -flto -DNDEBUG \
-//     verify_connectivity_proof.cpp -o verify_connectivity_proof
+//     connectivity_proof_check.cpp -o connectivity_proof_check
 //
 // Linux:
 //   g++ -O3 -std=c++17 -march=native -flto -DNDEBUG \
-//     verify_connectivity_proof.cpp -o verify_connectivity_proof
+//     connectivity_proof_check.cpp -o connectivity_proof_check
 
 #include <vector>
 #include <algorithm>

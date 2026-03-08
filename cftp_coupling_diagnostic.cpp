@@ -1,11 +1,11 @@
 // CFTP Diagnostic Tool - checks whether bounding chain ordering is maintained
 // and whether CFTP output distribution matches uniform over RBPDs.
 //
-// Compile: clang++ -O3 -std=c++17 cftp_diagnostic.cpp -o cftp_diagnostic
+// Compile: clang++ -O3 -std=c++17 cftp_coupling_diagnostic.cpp -o cftp_coupling_diagnostic
 //
 // Usage:
-//   ./cftp_diagnostic ordering <n> <num_samples>    Check h_b0 <= h_b1 at every step
-//   ./cftp_diagnostic freq <n> <num_samples>        Frequency test vs uniform
+//   ./cftp_coupling_diagnostic ordering <n> <num_samples>    Check h_b0 <= h_b1 at every step
+//   ./cftp_coupling_diagnostic freq <n> <num_samples>        Frequency test vs uniform
 
 #include <vector>
 #include <random>

@@ -1,4 +1,4 @@
-// monotonicity_check.cpp
+// cftp_monotonicity_check.cpp
 // Verifies the "Contact Shielding" monotonicity claim for BPD CFTP
 //
 // Tests monotonicity in the chosen height convention:
@@ -7,12 +7,12 @@
 // independent reducedness rejection), the order should still hold.
 //
 // Modes:
-//   ./monotonicity_check cftp <n> <trials>    - Monitor CFTP chains
-//   ./monotonicity_check exhaust <n>          - Exhaustive (n<=5)
-//   ./monotonicity_check both <n> <trials>    - Both tests
+//   ./cftp_monotonicity_check cftp <n> <trials>    - Monitor CFTP chains
+//   ./cftp_monotonicity_check exhaust <n>          - Exhaustive (n<=5)
+//   ./cftp_monotonicity_check both <n> <trials>    - Both tests
 //
 // Compile:
-//   clang++ -O3 -std=c++17 monotonicity_check.cpp -o monotonicity_check
+//   clang++ -O3 -std=c++17 cftp_monotonicity_check.cpp -o cftp_monotonicity_check
 
 #include <vector>
 #include <random>

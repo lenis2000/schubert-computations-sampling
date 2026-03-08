@@ -7,6 +7,7 @@ Tests all 6 implementations
 across layered permutations (MPP validation) and random permutations from CFTP sampler.
 
 Usage:
+    python benchmark_suite.py                                  # Default: layered benchmark only
     python benchmark_suite.py --list-sizes                    # Show available random sizes
     python benchmark_suite.py --layered --max-n 16
     python benchmark_suite.py --random --random-size 15 --samples 50
@@ -57,7 +58,7 @@ VARIANT_FLAGS = {
 }
 
 # MPP layered permutation data file
-MPP_DATA_FILE = PROJECT_ROOT / "data_MPP.csv"
+MPP_DATA_FILE = PROJECT_ROOT / "mpp_layered_permutations.csv"
 
 # Default permutation directory (can be overridden via CLI)
 DEFAULT_PERMS_DIR = SCRIPT_DIR / "permutation_data"
@@ -845,9 +846,10 @@ def main():
             print(f"No permutation files found in {args.perms_dir}")
         return
 
-    # Default to --all if no specific benchmark is selected
+    # Default to the bundled layered benchmark so a fresh clone does not
+    # require external permutation data just to run the script.
     if not (args.layered or args.random or args.all):
-        args.all = True
+        args.layered = True
 
     # Fail fast when the unified binary has not been compiled yet.
     if (args.layered or args.random or args.all) and not UNIFIED_BINARY.exists():

@@ -23,21 +23,21 @@ This repository contains the Schubert evaluator, the main MCMC sampler for reduc
 
 - **`explore_allowed_moves.cpp`** — Enumerates allowed flip/droop moves in the RBPD state space and supports the connectivity proof experiments.
 
-- **`verify_connectivity_proof.cpp`** — Verifies components of the connectivity proof computationally.
+- **`connectivity_proof_check.cpp`** — Verifies components of the connectivity proof computationally.
 
 ### CFTP failure experiments
 
 - **`bpd_cftp_sampler.cpp`** — Experimental backward-CFTP sampler used in the CFTP discussion and retained for comparison.
 
-- **`monotonicity_check.cpp`** — Enumerates monotonicity violations under internal rejection for CFTP (Table 3 in the paper).
+- **`cftp_monotonicity_check.cpp`** — Enumerates monotonicity violations under internal rejection for CFTP (Table 3 in the paper).
 
 - **`cftp_bias_test.cpp`** — Measures bias in naive CFTP output distribution (Table 5 in the paper).
 
-- **`cftp_diagnostic.cpp`** — CFTP diagnostic: runs backward coupling and checks for false coalescence (Table 4 in the paper).
+- **`cftp_coupling_diagnostic.cpp`** — CFTP diagnostic: runs backward coupling and checks for false coalescence (Table 4 in the paper).
 
 - **`cftp_universality_check.cpp`** — Checks whether extremal-chain coalescence implies universal coalescence.
 
-- **`benchmark_suite.py`** — Python harness for comparing performance of descent/cotransition/transition with double/exact arithmetic, using the bundled layered-permutation data in `data_MPP.csv`.
+- **`benchmark_suite.py`** — Python harness for comparing performance of descent/cotransition/transition with double/exact arithmetic, using the bundled layered-permutation data in `mpp_layered_permutations.csv`.
 
 ## Compilation
 
@@ -114,16 +114,16 @@ These are self-contained (no external libraries beyond the C++17 standard librar
 
 ```bash
 # macOS:
-for f in monotonicity_check bpd_connectivity_check cftp_diagnostic \
+for f in cftp_monotonicity_check bpd_connectivity_check cftp_coupling_diagnostic \
          cftp_bias_test cftp_universality_check explore_allowed_moves \
-         verify_connectivity_proof; do
+         connectivity_proof_check; do
   clang++ -O3 -std=c++17 ${f}.cpp -o ${f}
 done
 
 # Linux:
-for f in monotonicity_check bpd_connectivity_check cftp_diagnostic \
+for f in cftp_monotonicity_check bpd_connectivity_check cftp_coupling_diagnostic \
          cftp_bias_test cftp_universality_check explore_allowed_moves \
-         verify_connectivity_proof; do
+         connectivity_proof_check; do
   g++ -O3 -std=c++17 -march=native ${f}.cpp -o ${f}
 done
 ```
@@ -188,12 +188,12 @@ python3 uniformity_test.py
 
 ```bash
 # Monotonicity violations
-./monotonicity_check cftp 6 200
+./cftp_monotonicity_check cftp 6 200
 
 # False-coalescence and ordering diagnostics
-./cftp_diagnostic ordering 4 10000
-./cftp_diagnostic cftp_ext 4 100000
-./cftp_diagnostic cftp_int 4 100000
+./cftp_coupling_diagnostic ordering 4 10000
+./cftp_coupling_diagnostic cftp_ext 4 100000
+./cftp_coupling_diagnostic cftp_int 4 100000
 
 # Bias / universality checks
 ./cftp_bias_test 4 100000
@@ -205,7 +205,7 @@ python3 uniformity_test.py
 ```bash
 ./bpd_connectivity_check 8
 ./bpd_connectivity_check --fast --oeis 9
-./verify_connectivity_proof --all 7
+./connectivity_proof_check --all 7
 ```
 
 ## License

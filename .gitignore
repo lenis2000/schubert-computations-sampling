@@ -4,11 +4,14 @@ bpd_mcmc
 bpd_cftp_sampler
 bpd_connectivity_check
 explore_allowed_moves
+connectivity_proof_check
+cftp_monotonicity_check
+cftp_bias_test
+cftp_coupling_diagnostic
+cftp_universality_check
 verify_connectivity_proof
 monotonicity_check
-cftp_bias_test
 cftp_diagnostic
-cftp_universality_check
 
 # Build artifacts
 *.o
@@ -17,7 +20,7 @@ cftp_universality_check
 # Output files
 *.png
 *.csv
-!data_MPP.csv
+!mpp_layered_permutations.csv
 *.log
 benchmark_results/
 permutation_data/
