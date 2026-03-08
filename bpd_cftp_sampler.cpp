@@ -1,13 +1,17 @@
-// Unified BPD Sampler - Backward CFTP (Propp-Wilson) for reduced bumpless pipe dreams
-// Single sample mode: ./bpd_sampler <n> [seed]
-// Batch mode: ./bpd_sampler batch:<n>:<B> [--export]
+// Experimental BPD CFTP sampler for reduced bumpless pipe dreams.
+// This code is retained for the paper's CFTP failure diagnostics and comparisons.
+// For production sampling, use bpd_mcmc.cpp instead.
+//
+// Single sample mode: ./bpd_cftp_sampler <n> [seed]
+// Batch mode: ./bpd_cftp_sampler batch:<n>:<B> [--export]
 //
 // Compilation (single-threaded, with PNG):
-//   clang++ -O3 -std=c++17 bpd_sampler.cpp -o bpd_sampler -lpng
+//   clang++ -O3 -std=c++17 bpd_cftp_sampler.cpp -o bpd_cftp_sampler -lpng
 //
 // Compilation (batch mode with OpenMP):
 //   clang++ -O3 -std=c++17 -Xclang -fopenmp -L/opt/homebrew/opt/libomp/lib \
-//     -I/opt/homebrew/opt/libomp/include -lomp bpd_sampler.cpp -o bpd_sampler -lpng
+//     -I/opt/homebrew/opt/libomp/include -lomp \
+//     bpd_cftp_sampler.cpp -o bpd_cftp_sampler -lpng
 
 #include <vector>
 #include <random>
@@ -952,10 +956,13 @@ void write_mathematica_permutations(const std::vector<std::vector<int>>& perms, 
 // =============================================================================
 
 void print_help(const char* prog) {
-    printf("BPD Sampler - Backward CFTP (Propp-Wilson) for reduced bumpless pipe dreams\n\n");
+    printf("BPD CFTP Sampler - experimental backward CFTP for reduced bumpless pipe dreams\n\n");
     printf("Usage:\n");
     printf("  %s <n> [seed]                    Single sample mode\n", prog);
     printf("  %s batch:<n>:<B> [--export]      Batch mode\n\n", prog);
+    printf("Note:\n");
+    printf("  This program is kept for the paper's CFTP failure diagnostics.\n");
+    printf("  Use bpd_mcmc for the recommended sampling workflow.\n\n");
     printf("Arguments:\n");
     printf("  n             Grid size (>= 2)\n");
     printf("  seed          Random seed (default: random, 0 = random)\n");
@@ -977,14 +984,15 @@ void print_help(const char* prog) {
     printf("  perm_matrix_n<N>_B<B>.txt  Accumulated permutation matrix\n");
     printf("  perms_n<N>_B<B>.txt        All permutations (with --export)\n\n");
     printf("Algorithm: Backward CFTP (Propp-Wilson) with monotone coupling\n");
-    printf("  Samples uniformly from reduced bumpless pipe dreams.\n");
+    printf("  Included as experimental/diagnostic code for the CFTP obstruction.\n");
+    printf("  Not the recommended production sampler; see bpd_mcmc.cpp.\n");
     printf("  Uses doubling protocol: window doubles until top/bottom chains coalesce.\n");
     printf("Tile types: 0=blank, 1=cross, 2=r-elbow, 3=j-elbow, 4=vert, 5=horiz\n");
 }
 
 int run_single_mode(int n, uint32_t seed_arg) {
     uint32_t seed = (seed_arg == 0) ? std::random_device{}() : seed_arg;
-    printf("BPD Sampler (backward CFTP): n=%d, seed=%u\n", n, seed);
+    printf("BPD CFTP sampler (backward CFTP): n=%d, seed=%u\n", n, seed);
 
     BPDEngine engine(n);
     std::mt19937 rng(seed);
@@ -1038,7 +1046,7 @@ int run_single_mode(int n, uint32_t seed_arg) {
 
 int run_batch_mode(int n, int B, bool export_perms) {
     int num_threads = omp_get_max_threads();
-    printf("BPD Batch Sampler (backward CFTP): n=%d, B=%d, threads=%d%s\n",
+        printf("BPD CFTP batch sampler (backward CFTP): n=%d, B=%d, threads=%d%s\n",
            n, B, num_threads, export_perms ? ", export mode" : "");
 
     std::vector<int64_t> sum_matrix(n * n, 0);
