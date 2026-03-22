@@ -39,6 +39,20 @@
 #include <gmpxx.h>
 #include <boost/multiprecision/cpp_int.hpp>
 
+// Parallel sort: use __gnu_parallel::sort on GCC/Linux for multi-threaded sorting
+#if defined(__GNUC__) && !defined(__clang__)
+#include <parallel/algorithm>
+template<typename Iter>
+void parallel_sort(Iter begin, Iter end) {
+    __gnu_parallel::sort(begin, end);
+}
+#else
+template<typename Iter>
+void parallel_sort(Iter begin, Iter end) {
+    std::sort(begin, end);
+}
+#endif
+
 using boost::multiprecision::cpp_int;
 using uint128_t = unsigned __int128;
 
@@ -49,10 +63,9 @@ using uint128_t = unsigned __int128;
 constexpr int MAX_N = 25;  // 25 * 5 bits = 125 bits < 128 bits
 static const int DEFAULT_THREADS = std::max(1, (int)std::thread::hardware_concurrency());
 
-// Memoization hard caps - balance cache-friendliness vs recomputation
-// For single-formula runs targeting ~12GB RAM:
-static const size_t MEMO_HARD_CAP_DOUBLE = 3ULL << 26;  // ~192M entries, ~12GB RAM
-static const size_t MEMO_HARD_CAP_EXACT = 1ULL << 27;   // ~128M entries, ~12.8GB RAM
+// Memoization hard cap - unified for double and exact to ensure fair benchmarking.
+// 128M entries ≈ 8GB (double) or 12.8GB (exact).
+static const size_t MEMO_HARD_CAP = 1ULL << 27;  // ~128M entries
 
 // Global stop flag for clean termination
 static std::atomic<bool> g_stop_flag{false};
@@ -838,7 +851,7 @@ double schubert_descent_double(const std::vector<int>& target_w, std::atomic<boo
     auto last_print_time = start_time;
 
     std::unordered_map<PermKey128, double, PermKey128Hash> memo;
-    memo.reserve(MEMO_HARD_CAP_DOUBLE);
+    memo.reserve(MEMO_HARD_CAP);
 
     // Stack-based iterative descent
     struct StackEntry {
@@ -917,7 +930,7 @@ double schubert_descent_double(const std::vector<int>& target_w, std::atomic<boo
         if (top.state == 0) {
             // Entering: check base case and memo
             if (top.ell == 0) {
-                if (memo.size() < MEMO_HARD_CAP_DOUBLE) memo[top.key] = 1.0;
+                if (memo.size() < MEMO_HARD_CAP) memo[top.key] = 1.0;
                 final_result = 1.0;
                 stk.pop();
                 continue;
@@ -970,7 +983,7 @@ double schubert_descent_double(const std::vector<int>& target_w, std::atomic<boo
             } else {
                 // All children processed
                 double val = top.partial_sum;
-                if (memo.size() < MEMO_HARD_CAP_DOUBLE) {
+                if (memo.size() < MEMO_HARD_CAP) {
                     memo[top.key] = val;
                 } else if (!memo_warning && !quiet) {
                     printf("\n!!! MEMO LIMIT HIT !!!\n");
@@ -1013,7 +1026,7 @@ double schubert_descent_double_verbose(
     if (target_ell == 0) return 1.0;
 
     std::unordered_map<PermKey128, double, PermKey128Hash> memo;
-    memo.reserve(MEMO_HARD_CAP_DOUBLE);
+    memo.reserve(MEMO_HARD_CAP);
 
     // Stack-based iterative descent
     // State: 0 = entering, 1 = processing children
@@ -1056,7 +1069,7 @@ double schubert_descent_double_verbose(
         if (top.state == 0) {
             // Entering: check base case and memo
             if (top.ell == 0) {
-                if (memo.size() < MEMO_HARD_CAP_DOUBLE) memo[top.key] = 1.0;
+                if (memo.size() < MEMO_HARD_CAP) memo[top.key] = 1.0;
                 final_result = 1.0;
                 stk.pop();
                 continue;
@@ -1109,7 +1122,7 @@ double schubert_descent_double_verbose(
             } else {
                 // All children processed
                 double val = top.partial_sum;
-                if (memo.size() < MEMO_HARD_CAP_DOUBLE) {
+                if (memo.size() < MEMO_HARD_CAP) {
                     memo[top.key] = val;
                 }
                 final_result = val;
@@ -1138,7 +1151,7 @@ Rational schubert_descent_rational(const std::vector<int>& target_w, std::atomic
     if (ell == 0) return Rational(1);
 
     std::unordered_map<PermKey128, Rational, PermKey128Hash> memo;
-    memo.reserve(MEMO_HARD_CAP_EXACT);
+    memo.reserve(MEMO_HARD_CAP);
     auto start_time = std::chrono::steady_clock::now();
     size_t iterations = 0;
     size_t last_report = 0;
@@ -1158,7 +1171,7 @@ Rational schubert_descent_rational(const std::vector<int>& target_w, std::atomic
         }
 
         if (l == 0) {
-            if (memo.size() < MEMO_HARD_CAP_EXACT) memo[k] = Rational(1);
+            if (memo.size() < MEMO_HARD_CAP) memo[k] = Rational(1);
             return Rational(1);
         }
 
@@ -1173,7 +1186,7 @@ Rational schubert_descent_rational(const std::vector<int>& target_w, std::atomic
                 total = total + (Rational(i + 1) / Rational(l)) * child_val;
             }
         }
-        if (memo.size() < MEMO_HARD_CAP_EXACT) memo[k] = total;
+        if (memo.size() < MEMO_HARD_CAP) memo[k] = total;
         return total;
     };
 
@@ -1207,7 +1220,7 @@ Rational schubert_descent_rational_verbose(
     if (target_ell == 0) return Rational(1);
 
     std::unordered_map<PermKey128, Rational, PermKey128Hash> memo;
-    memo.reserve(MEMO_HARD_CAP_EXACT);
+    memo.reserve(MEMO_HARD_CAP);
 
     // Stack-based iterative descent for progress tracking
     struct StackEntry {
@@ -1249,7 +1262,7 @@ Rational schubert_descent_rational_verbose(
         if (top.state == 0) {
             // Entering: check base case and memo
             if (top.ell == 0) {
-                if (memo.size() < MEMO_HARD_CAP_EXACT) memo[top.key] = Rational(1);
+                if (memo.size() < MEMO_HARD_CAP) memo[top.key] = Rational(1);
                 final_result = Rational(1);
                 stk.pop();
                 continue;
@@ -1302,7 +1315,7 @@ Rational schubert_descent_rational_verbose(
             } else {
                 // All children processed
                 Rational val = top.partial_sum;
-                if (memo.size() < MEMO_HARD_CAP_EXACT) {
+                if (memo.size() < MEMO_HARD_CAP) {
                     memo[top.key] = val;
                 }
                 final_result = val;
@@ -1365,7 +1378,7 @@ double schubert_cotrans_double(const std::vector<int>& target_w, std::atomic<boo
     auto last_print_time = start_time;
 
     std::unordered_map<PermKey128, double, PermKey128Hash> memo;
-    memo.reserve(MEMO_HARD_CAP_DOUBLE);
+    memo.reserve(MEMO_HARD_CAP);
 
     struct StackEntry {
         PermKey128 key;
@@ -1511,7 +1524,7 @@ double schubert_cotrans_double(const std::vector<int>& target_w, std::atomic<boo
                     stk.push(child);
                 }
             } else {
-                if (memo.size() < MEMO_HARD_CAP_DOUBLE) {
+                if (memo.size() < MEMO_HARD_CAP) {
                     memo[top.key] = top.partial_sum;
                 } else if (!memo_warning && !quiet) {
                     printf("\n!!! MEMO LIMIT HIT !!!\n");
@@ -1558,7 +1571,7 @@ double schubert_cotrans_double_verbose(
     if (is_w0(target_key)) return 1.0;
 
     std::unordered_map<PermKey128, double, PermKey128Hash> memo;
-    memo.reserve(MEMO_HARD_CAP_DOUBLE);
+    memo.reserve(MEMO_HARD_CAP);
 
     struct StackEntry {
         PermKey128 key;
@@ -1667,7 +1680,7 @@ double schubert_cotrans_double_verbose(
                 }
             } else {
                 double val = top.partial_sum;
-                if (memo.size() < MEMO_HARD_CAP_DOUBLE) {
+                if (memo.size() < MEMO_HARD_CAP) {
                     memo[top.key] = val;
                 }
                 final_result = val;
@@ -1799,7 +1812,7 @@ double schubert_cotrans_double_with_memo(
                     stk.push(child);
                 }
             } else {
-                if (memo.size() < MEMO_HARD_CAP_DOUBLE) {
+                if (memo.size() < MEMO_HARD_CAP) {
                     memo[top.key] = top.partial_sum;
                 } else if (!memo_warning && !quiet) {
                     printf("\n!!! SHARED MEMO LIMIT HIT !!!\n");
@@ -1827,7 +1840,7 @@ mpz_class schubert_cotrans_exact(const std::vector<int>& target_w, std::atomic<b
     auto start_time = std::chrono::steady_clock::now();
 
     std::unordered_map<PermKey128, mpz_class, PermKey128Hash> memo;
-    memo.reserve(MEMO_HARD_CAP_EXACT);
+    memo.reserve(MEMO_HARD_CAP);
 
     struct StackEntry {
         PermKey128 key;
@@ -1938,7 +1951,7 @@ mpz_class schubert_cotrans_exact(const std::vector<int>& target_w, std::atomic<b
                     stk.push(child);
                 }
             } else {
-                if (memo.size() < MEMO_HARD_CAP_EXACT) {
+                if (memo.size() < MEMO_HARD_CAP) {
                     memo[top.key] = top.partial_sum;
                 } else if (!memo_warning && !quiet) {
                     printf("\n!!! MEMO LIMIT HIT !!!\n");
@@ -1976,7 +1989,7 @@ mpz_class schubert_cotrans_exact_verbose(
     if (is_w0(target_key)) return 1;
 
     std::unordered_map<PermKey128, mpz_class, PermKey128Hash> memo;
-    memo.reserve(MEMO_HARD_CAP_EXACT);
+    memo.reserve(MEMO_HARD_CAP);
 
     struct StackEntry {
         PermKey128 key;
@@ -2085,7 +2098,7 @@ mpz_class schubert_cotrans_exact_verbose(
                     stk.push(child);
                 }
             } else {
-                if (memo.size() < MEMO_HARD_CAP_EXACT) {
+                if (memo.size() < MEMO_HARD_CAP) {
                     memo[top.key] = top.partial_sum;
                 }
                 final_result = top.partial_sum;
@@ -2151,7 +2164,7 @@ double schubert_transition_double(const std::vector<int>& target_w, std::atomic<
     auto last_print_time = start_time;
 
     std::unordered_map<PermKey128, double, PermKey128Hash> memo;
-    memo.reserve(MEMO_HARD_CAP_DOUBLE);
+    memo.reserve(MEMO_HARD_CAP);
 
     // Stack-based iterative DFS
     // Transition produces: v (ell-1) and w' terms (same ell as w).
@@ -2240,7 +2253,7 @@ double schubert_transition_double(const std::vector<int>& target_w, std::atomic<
             auto [r, s] = find_transition_rs(top.key);
             if (r < 0) {
                 // Dominant permutation: Upsilon_w = 1
-                if (memo.size() < MEMO_HARD_CAP_DOUBLE) memo[top.key] = 1.0;
+                if (memo.size() < MEMO_HARD_CAP) memo[top.key] = 1.0;
                 final_result = 1.0;
                 stk.pop();
                 continue;
@@ -2293,7 +2306,7 @@ double schubert_transition_double(const std::vector<int>& target_w, std::atomic<
                 }
             } else {
                 // All children processed
-                if (memo.size() < MEMO_HARD_CAP_DOUBLE) {
+                if (memo.size() < MEMO_HARD_CAP) {
                     memo[top.key] = top.partial_sum;
                 } else if (!memo_warning && !quiet) {
                     printf("\n!!! MEMO LIMIT HIT !!!\n");
@@ -2336,7 +2349,7 @@ mpz_class schubert_transition_exact(const std::vector<int>& target_w, std::atomi
     auto last_print_time = start_time;
 
     std::unordered_map<PermKey128, mpz_class, PermKey128Hash> memo;
-    memo.reserve(MEMO_HARD_CAP_EXACT);
+    memo.reserve(MEMO_HARD_CAP);
 
     // Stack-based iterative DFS
     struct StackEntry {
@@ -2423,7 +2436,7 @@ mpz_class schubert_transition_exact(const std::vector<int>& target_w, std::atomi
             auto [r, s] = find_transition_rs(top.key);
             if (r < 0) {
                 // Dominant permutation: Upsilon_w = 1
-                if (memo.size() < MEMO_HARD_CAP_EXACT) memo[top.key] = mpz_class(1);
+                if (memo.size() < MEMO_HARD_CAP) memo[top.key] = mpz_class(1);
                 final_result = mpz_class(1);
                 stk.pop();
                 continue;
@@ -2476,7 +2489,7 @@ mpz_class schubert_transition_exact(const std::vector<int>& target_w, std::atomi
                 }
             } else {
                 // All children processed
-                if (memo.size() < MEMO_HARD_CAP_EXACT) {
+                if (memo.size() < MEMO_HARD_CAP) {
                     memo[top.key] = top.partial_sum;
                 } else if (!memo_warning && !quiet) {
                     printf("\n!!! MEMO LIMIT HIT !!!\n");
@@ -2528,53 +2541,54 @@ static bool use_bfs(int n, BfsMode mode) {
 }
 
 // Dispatch helpers: select DFS or BFS evaluator based on n and bfs_mode
-static double eval_descent_double(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode bfs_mode) {
+// num_threads: 0 = use DEFAULT_THREADS, >0 = use specified count
+static double eval_descent_double(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode bfs_mode, int num_threads = 0) {
     int n = (int)w.size();
     if (use_bfs(n, bfs_mode) && n <= 16)
-        return schubert_descent_double_bfs(w, stop, quiet);
+        return schubert_descent_double_bfs(w, stop, quiet, num_threads);
     if (use_bfs(n, bfs_mode) && n <= 25)
-        return schubert_descent_double_bfs_128(w, stop, quiet);
+        return schubert_descent_double_bfs_128(w, stop, quiet, num_threads);
     return schubert_descent_double(w, stop, quiet);
 }
 
-static double eval_cotrans_double(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode bfs_mode) {
+static double eval_cotrans_double(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode bfs_mode, int num_threads = 0) {
     int n = (int)w.size();
     if (use_bfs(n, bfs_mode) && n <= 16)
-        return schubert_cotrans_double_bfs(w, stop, quiet);
+        return schubert_cotrans_double_bfs(w, stop, quiet, num_threads);
     if (use_bfs(n, bfs_mode) && n <= 25)
-        return schubert_cotrans_double_bfs_128(w, stop, quiet);
+        return schubert_cotrans_double_bfs_128(w, stop, quiet, num_threads);
     return schubert_cotrans_double(w, stop, quiet);
 }
 
-static Rational eval_descent_exact(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode bfs_mode) {
+static Rational eval_descent_exact(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode bfs_mode, int num_threads = 0) {
     int n = (int)w.size();
     if (use_bfs(n, bfs_mode) && n <= 16)
-        return schubert_descent_rational_bfs(w, stop, quiet);
+        return schubert_descent_rational_bfs(w, stop, quiet, num_threads);
     if (use_bfs(n, bfs_mode) && n <= 25)
-        return schubert_descent_rational_bfs_128(w, stop, quiet);
+        return schubert_descent_rational_bfs_128(w, stop, quiet, num_threads);
     return schubert_descent_rational(w, stop, quiet);
 }
 
-static mpz_class eval_cotrans_exact(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode bfs_mode) {
+static mpz_class eval_cotrans_exact(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode bfs_mode, int num_threads = 0) {
     int n = (int)w.size();
     if (use_bfs(n, bfs_mode) && n <= 16)
-        return schubert_cotrans_exact_bfs(w, stop, quiet);
+        return schubert_cotrans_exact_bfs(w, stop, quiet, num_threads);
     if (use_bfs(n, bfs_mode) && n <= 25)
-        return schubert_cotrans_exact_bfs_128(w, stop, quiet);
+        return schubert_cotrans_exact_bfs_128(w, stop, quiet, num_threads);
     return schubert_cotrans_exact(w, stop, quiet);
 }
 
 // Transition dispatch helpers: DFS only (no BFS variant)
-static double eval_transition_double(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode /*bfs_mode*/) {
+static double eval_transition_double(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode /*bfs_mode*/, int /*num_threads*/ = 0) {
     return schubert_transition_double(w, stop, quiet);
 }
 
-static mpz_class eval_transition_exact(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode /*bfs_mode*/) {
+static mpz_class eval_transition_exact(const std::vector<int>& w, std::atomic<bool>& stop, bool quiet, BfsMode /*bfs_mode*/, int /*num_threads*/ = 0) {
     return schubert_transition_exact(w, stop, quiet);
 }
 
 // Race two methods, return first result (with progress monitoring)
-ComputeResult race_methods(const std::vector<int>& w, Precision prec, bool quiet, BfsMode bfs_mode = BfsMode::AUTO) {
+ComputeResult race_methods(const std::vector<int>& w, Precision prec, bool quiet, BfsMode bfs_mode = BfsMode::AUTO, int num_threads = 0) {
     ComputeResult result;
     result.is_exact = (prec == Precision::EXACT);
 
@@ -2698,11 +2712,12 @@ ComputeResult race_methods(const std::vector<int>& w, Precision prec, bool quiet
         });
     }
 
+    // Halve thread count per BFS task to avoid over-subscription (both run concurrently).
+    int effective_threads = num_threads > 0 ? num_threads : (DEFAULT_THREADS > 0 ? DEFAULT_THREADS : 4);
+    int race_threads = std::max(1, effective_threads / 2);
+
     if (prec == Precision::DOUBLE) {
         double val1 = 0.0, val2 = 0.0;
-
-        // Halve thread count per BFS task to avoid over-subscription (both run concurrently).
-        int race_threads = std::max(1, (DEFAULT_THREADS > 0 ? DEFAULT_THREADS : 4) / 2);
         auto descent_task = [&]() {
             if (use_bfs(n, bfs_mode) && n <= 16) {
                 val1 = schubert_descent_double_bfs(w, stop1, quiet, race_threads);
@@ -2756,7 +2771,6 @@ ComputeResult race_methods(const std::vector<int>& w, Precision prec, bool quiet
         Rational val1;
         mpz_class val2;
 
-        int race_threads = std::max(1, (DEFAULT_THREADS > 0 ? DEFAULT_THREADS : 4) / 2);
         auto descent_task = [&]() {
             if (use_bfs(n, bfs_mode) && n <= 16) {
                 val1 = schubert_descent_rational_bfs(w, stop1, quiet, race_threads);
@@ -2857,7 +2871,7 @@ const LayeredData MPPY_DATA[] = {
 // Command functions
 // =============================================================================
 
-void cmd_eval(const std::vector<int>& w_orig, Precision prec, Formula formula, bool no_product = false, BfsMode bfs_mode = BfsMode::AUTO) {
+void cmd_eval(const std::vector<int>& w_orig, Precision prec, Formula formula, bool no_product = false, BfsMode bfs_mode = BfsMode::AUTO, int num_threads = 0) {
     int n_orig = (int)w_orig.size();
     int ell = compute_length(w_orig);
 
@@ -2901,7 +2915,7 @@ void cmd_eval(const std::vector<int>& w_orig, Precision prec, Formula formula, b
     auto start = std::chrono::high_resolution_clock::now();
 
     if (formula == Formula::BEST) {
-        ComputeResult res = race_methods(w, prec, false, bfs_mode);
+        ComputeResult res = race_methods(w, prec, false, bfs_mode, num_threads);
         printf("\nWinner: %s (finished first)\n", res.winner.c_str());
         if (prec == Precision::DOUBLE) {
             printf("Result: S_w(1^%d) = %.0f\n", n_orig, res.double_val);
@@ -2913,14 +2927,14 @@ void cmd_eval(const std::vector<int>& w_orig, Precision prec, Formula formula, b
         printf("Computation time: %.4f seconds\n", res.time_seconds);
     } else if (formula == Formula::DESCENT) {
         if (prec == Precision::DOUBLE) {
-            double result = eval_descent_double(w, stop, false, bfs_mode);
+            double result = eval_descent_double(w, stop, false, bfs_mode, num_threads);
             auto end = std::chrono::high_resolution_clock::now();
             double elapsed = std::chrono::duration<double>(end - start).count();
             printf("\nResult: S_w(1^%d) = %.0f\n", n_orig, result);
             printf("log2(S_w) / n^2 = %.8f\n", log2(result) / ((double)n_orig * n_orig));
             printf("Computation time: %.4f seconds\n", elapsed);
         } else {
-            Rational result = eval_descent_exact(w, stop, false, bfs_mode);
+            Rational result = eval_descent_exact(w, stop, false, bfs_mode, num_threads);
             auto end = std::chrono::high_resolution_clock::now();
             double elapsed = std::chrono::duration<double>(end - start).count();
             printf("\nResult: S_w(1^%d) = ", n_orig);
@@ -2931,14 +2945,14 @@ void cmd_eval(const std::vector<int>& w_orig, Precision prec, Formula formula, b
         }
     } else if (formula == Formula::TRANSITION) {
         if (prec == Precision::DOUBLE) {
-            double result = eval_transition_double(w, stop, false, bfs_mode);
+            double result = eval_transition_double(w, stop, false, bfs_mode, num_threads);
             auto end = std::chrono::high_resolution_clock::now();
             double elapsed = std::chrono::duration<double>(end - start).count();
             printf("\nResult: S_w(1^%d) = %.0f\n", n_orig, result);
             printf("log2(S_w) / n^2 = %.8f\n", log2(result) / ((double)n_orig * n_orig));
             printf("Computation time: %.4f seconds\n", elapsed);
         } else {
-            mpz_class result = eval_transition_exact(w, stop, false, bfs_mode);
+            mpz_class result = eval_transition_exact(w, stop, false, bfs_mode, num_threads);
             auto end = std::chrono::high_resolution_clock::now();
             double elapsed = std::chrono::duration<double>(end - start).count();
             gmp_printf("\nResult: S_w(1^%d) = %Zd\n", n_orig, result.get_mpz_t());
@@ -2947,14 +2961,14 @@ void cmd_eval(const std::vector<int>& w_orig, Precision prec, Formula formula, b
         }
     } else {  // COTRANS
         if (prec == Precision::DOUBLE) {
-            double result = eval_cotrans_double(w, stop, false, bfs_mode);
+            double result = eval_cotrans_double(w, stop, false, bfs_mode, num_threads);
             auto end = std::chrono::high_resolution_clock::now();
             double elapsed = std::chrono::duration<double>(end - start).count();
             printf("\nResult: S_w(1^%d) = %.0f\n", n_orig, result);
             printf("log2(S_w) / n^2 = %.8f\n", log2(result) / ((double)n_orig * n_orig));
             printf("Computation time: %.4f seconds\n", elapsed);
         } else {
-            mpz_class result = eval_cotrans_exact(w, stop, false, bfs_mode);
+            mpz_class result = eval_cotrans_exact(w, stop, false, bfs_mode, num_threads);
             auto end = std::chrono::high_resolution_clock::now();
             double elapsed = std::chrono::duration<double>(end - start).count();
             gmp_printf("\nResult: S_w(1^%d) = %Zd\n", n_orig, result.get_mpz_t());
@@ -3276,7 +3290,7 @@ static void radix_sort_layer(std::vector<CompactEntry>& layer) {
 static void sort_reduce_layer(std::vector<CompactEntry>& layer) {
     if (layer.empty()) return;
 
-    std::sort(layer.begin(), layer.end());
+    parallel_sort(layer.begin(), layer.end());
 
     size_t write = 0;
     for (size_t read = 1; read < layer.size(); read++) {
@@ -3294,7 +3308,7 @@ static void sort_reduce_layer(std::vector<CompactEntry>& layer) {
 static void sort_reduce_layer_rational(std::vector<CompactEntryRational>& layer) {
     if (layer.empty()) return;
 
-    std::sort(layer.begin(), layer.end());
+    parallel_sort(layer.begin(), layer.end());
 
     size_t write = 0;
     for (size_t read = 1; read < layer.size(); read++) {
@@ -3312,7 +3326,7 @@ static void sort_reduce_layer_rational(std::vector<CompactEntryRational>& layer)
 static void sort_reduce_layer_mpz(std::vector<CompactEntryMpz>& layer) {
     if (layer.empty()) return;
 
-    std::sort(layer.begin(), layer.end());
+    parallel_sort(layer.begin(), layer.end());
 
     size_t write = 0;
     for (size_t read = 1; read < layer.size(); read++) {
@@ -3976,7 +3990,7 @@ static void sort_reduce_layer_128(std::vector<CompactEntry128>& layer) {
     if (layer.size() >= RADIX_THRESHOLD) {
         radix_sort_layer_128(layer);
     } else {
-        std::sort(layer.begin(), layer.end());
+        parallel_sort(layer.begin(), layer.end());
     }
 
     // Deduplication (summing values for identical permutations)
@@ -4361,7 +4375,7 @@ double schubert_cotrans_double_bfs_128(const std::vector<int>& target_w,
 static void sort_reduce_layer_128_rational(std::vector<CompactEntry128Rational>& layer) {
     if (layer.empty()) return;
 
-    std::sort(layer.begin(), layer.end());
+    parallel_sort(layer.begin(), layer.end());
 
     size_t write = 0;
     for (size_t read = 1; read < layer.size(); read++) {
@@ -4378,7 +4392,7 @@ static void sort_reduce_layer_128_rational(std::vector<CompactEntry128Rational>&
 static void sort_reduce_layer_128_mpz(std::vector<CompactEntry128Mpz>& layer) {
     if (layer.empty()) return;
 
-    std::sort(layer.begin(), layer.end());
+    parallel_sort(layer.begin(), layer.end());
 
     size_t write = 0;
     for (size_t read = 1; read < layer.size(); read++) {
@@ -6450,7 +6464,7 @@ void print_help(const char* prog) {
     printf("  --cotrans        Use cotransition formula only\n");
     printf("  --transition     Use transition formula only (DFS, no BFS variant)\n");
     printf("  --best           Race both formulas, return first result [default]\n");
-    printf("  --threads=N      Use N threads for max search (default: auto-detect)\n");
+    printf("  --threads=N      Use N threads for BFS and max search (default: %d)\n", DEFAULT_THREADS);
     printf("  --product        Show product formula comparison in layered_test\n");
     printf("  --no-product     Disable auto-detection of layered permutations (force algorithm)\n");
     printf("  --bfs            Use BFS sort-reduce algorithm (default for n<=25)\n");
@@ -6747,6 +6761,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    cmd_eval(w, prec, formula, no_product, bfs_mode);
+    cmd_eval(w, prec, formula, no_product, bfs_mode, num_threads);
     return 0;
 }
