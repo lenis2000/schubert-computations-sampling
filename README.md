@@ -5,6 +5,8 @@ Code accompanying the paper:
 > D. Anderson, G. Panova, L. Petrov.
 > *Computation and sampling for Schubert specializations.*
 
+[https://arxiv.org/abs/2603.20104](https://arxiv.org/abs/2603.20104)
+
 ## Overview
 
 This repository contains the Schubert evaluator, the main MCMC sampler for reduced bumpless pipe dreams, and the auxiliary code used for connectivity checks, CFTP diagnostics, and validation experiments.
