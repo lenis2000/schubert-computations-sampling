@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Multi-start diagnostic run for the MCMC validation dossier (Task 5 of the
-# PNAS SI validation plan). Drives code/bpd_mcmc from four starting states
+# SI validation plan). Drives the repo-root bpd_mcmc binary from four starting
+# states
 # (b_w0, b_id, Rothe of the MPP3 layered optimum, random RBPD) with identical
 # burn-in and collection settings, across a handful of independent seeds per
 # start. Aggregates each chain's (step, ell, corner) burn-in trace and emits
@@ -32,14 +33,14 @@
 #   DROOP_DIST     droop rectangle size distribution (default geometric)
 #   ANCHOR         droop anchor corner (default se)
 #   OUTDIR         root output directory (default
-#                  PNAS/mcmc_validation/data/multistart_n<N>_runs)
+#                  mcmc_validation/data/multistart_n<N>_runs)
 #   DATA_DIR       where the aggregated CSV lands (default
-#                  PNAS/mcmc_validation/data)
+#                  mcmc_validation/data)
 #   IMG_DIR        where the aggregated PDF lands (default
-#                  PNAS/mcmc_validation/img)
+#                  mcmc_validation/img)
 #   ROTHE_CSV      comma-separated Rothe start permutation (default: MPP3
 #                  layered optimum for n=60, which is w(1,3,6,15,35))
-#   MCMC_BIN       path to the bpd_mcmc binary (default code/bpd_mcmc)
+#   MCMC_BIN       path to the bpd_mcmc binary (default ./bpd_mcmc)
 #   PLOT_SCRIPT    path to the aggregation/plot script (default next to
 #                  this script)
 #
@@ -52,12 +53,12 @@ set -euo pipefail
 
 # --- Resolve paths ---------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 N="${N:-60}"
 if (( N > 60 )); then
     echo "Error: N=$N > 60. This script is capped at n=60 by the validation plan." >&2
-    echo "       For n=100 use PNAS/mcmc_validation/scripts/rivanna_validation_n100.slurm." >&2
+    echo "       For n=100 use mcmc_validation/scripts/rivanna_validation_n100.slurm." >&2
     exit 1
 fi
 
@@ -82,10 +83,10 @@ if [[ -n "${THREADS:-}" && "${THREADS}" != "1" ]]; then
 fi
 THREADS=1
 
-OUTDIR="${OUTDIR:-$REPO_ROOT/PNAS/mcmc_validation/data/multistart_n${N}_runs}"
-DATA_DIR="${DATA_DIR:-$REPO_ROOT/PNAS/mcmc_validation/data}"
-IMG_DIR="${IMG_DIR:-$REPO_ROOT/PNAS/mcmc_validation/img}"
-MCMC_BIN="${MCMC_BIN:-$REPO_ROOT/code/bpd_mcmc}"
+OUTDIR="${OUTDIR:-$REPO_ROOT/mcmc_validation/data/multistart_n${N}_runs}"
+DATA_DIR="${DATA_DIR:-$REPO_ROOT/mcmc_validation/data}"
+IMG_DIR="${IMG_DIR:-$REPO_ROOT/mcmc_validation/img}"
+MCMC_BIN="${MCMC_BIN:-$REPO_ROOT/bpd_mcmc}"
 PLOT_SCRIPT="${PLOT_SCRIPT:-$SCRIPT_DIR/plot_multistart_trace.py}"
 
 # When ROTHE_CSV isn't supplied, delegate to measure_acceptance_rates.py so
@@ -93,7 +94,7 @@ PLOT_SCRIPT="${PLOT_SCRIPT:-$SCRIPT_DIR/plot_multistart_trace.py}"
 # the requested n has no tabulated optimum, which we surface here instead
 # of silently falling back to a mis-labeled ad-hoc split.
 if [[ -z "${ROTHE_CSV:-}" ]]; then
-    if ! ROTHE_CSV="$(python3 - "$REPO_ROOT/code" "$N" <<'PYEOF'
+    if ! ROTHE_CSV="$(python3 - "$SCRIPT_DIR" "$N" <<'PYEOF'
 import sys
 sys.path.insert(0, sys.argv[1])
 from measure_acceptance_rates import (
@@ -146,7 +147,7 @@ mkdir -p "$OUTDIR" "$DATA_DIR" "$IMG_DIR"
 
 if [[ ! -x "$MCMC_BIN" ]]; then
     echo "Error: bpd_mcmc binary not found or not executable at $MCMC_BIN" >&2
-    echo "       Build it first (see CLAUDE.md) or set MCMC_BIN=/path/to/bpd_mcmc." >&2
+    echo "       Build it first (see the top-level README.md) or set MCMC_BIN=/path/to/bpd_mcmc." >&2
     exit 1
 fi
 

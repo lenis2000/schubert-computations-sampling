@@ -48,5 +48,6 @@ in `../../mcmc_validation/data/multistart_n60_trace.csv` at smaller $n$.
 
 ## Version
 
-Run produced with `code/bpd_mcmc` at the commit recorded in the release tag
-of the SI Code availability section. Rebuild with the flags in `CLAUDE.md`.
+Run produced with the repository's `bpd_mcmc` binary at the release snapshot
+described in the SI Code availability section. Rebuild with the compiler flags
+documented in the top-level `README.md`.

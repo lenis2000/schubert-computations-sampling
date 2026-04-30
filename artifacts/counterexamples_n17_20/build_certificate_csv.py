@@ -12,11 +12,11 @@ agreement (cotrans, transition, descent, product formula), and emits:
                                     and "OK" if all methods at that n agree.
 
 Usage (from repo root):
-    python3 PNAS/artifacts/counterexamples_n17_20/build_certificate_csv.py
+    python3 artifacts/counterexamples_n17_20/build_certificate_csv.py
 
 To check byte-identical regeneration:
-    python3 PNAS/artifacts/counterexamples_n17_20/build_certificate_csv.py --stdout \
-        | diff - PNAS/artifacts/counterexamples_n17_20/certificate.tex
+    python3 artifacts/counterexamples_n17_20/build_certificate_csv.py --stdout \
+        | diff - artifacts/counterexamples_n17_20/certificate.tex
 
 Assumes log filenames of the form:
     n<N>_<LABEL>_<METHOD>[_suffix].log
@@ -332,12 +332,21 @@ def main() -> int:
             print(err, file=sys.stderr)
         return 2
 
-    tex = emit_tex(entries)
+    complete_entries = [e for e in entries if e.upsilon is not None]
+    skipped = [e for e in entries if e.upsilon is None]
+    if skipped:
+        print(
+            "warning: ignoring log files with no parsed Result line: "
+            + ", ".join(e.filename for e in skipped),
+            file=sys.stderr,
+        )
+
+    tex = emit_tex(complete_entries)
 
     if args.stdout:
         sys.stdout.write(tex)
     else:
-        emit_csv(entries, args.out_csv)
+        emit_csv(complete_entries, args.out_csv)
         with open(args.out_tex, "w") as f:
             f.write(tex)
         print(f"wrote {args.out_csv}")

@@ -53,8 +53,8 @@ The repository ships the raw evidence backing every numerical claim in the paper
 
 Certification trail for the disproof of the Merzon--Smirnov conjecture at $n = 17$ and the analogous counterexamples at $n = 18, 19, 20$:
 
-- `logs/` — sixteen raw logs of `./schubert --exact --{cotrans,transition,product}` runs, one per (permutation, method).
-- `certificate.csv` — long-form table with one row per (permutation, implementation), including each log's SHA-256 hash.
+- `logs/` — raw exact-evaluation logs for the certified $n=17,18,19,20$ counterexamples and layered comparators, plus a small amount of historical audit material kept for provenance.
+- `certificate.csv` — long-form table with one row per certified (permutation, implementation), including each certified log's SHA-256 hash.
 - `certificate.tex` — auto-generated `tabular` snippet input by SI Sec.~F.
 - `build_certificate_csv.py` — verifier that re-parses every log, asserts digit-for-digit agreement between cotransition and transition, aborts on mismatch, and re-emits the CSV/TeX.
 - `README.md` — full submission recipe, including the Rivanna SLURM job for the $n = 19, 20$ runs.
@@ -69,7 +69,7 @@ Quantitative validation of the MCMC sampler (SI Sec.~4D):
 
 - `data/` — small-$n$ uniformity (chi-squared, TV distance), within-fiber test at $n=4$, acceptance rates broken down by move type and starting state, integrated autocorrelation times, ESS, and a multi-start coupling trace at $n=60$. CSVs and the matching `.tex` snippets used in SI Sec.~4D.
 - `img/multistart_n60.pdf` — rendered figure.
-- `scripts/` — analysis pipeline: `analyze_mcmc_validation.py`, `compute_null_envelope.py`, `plot_multistart_trace.py`, `within_fiber_test.py`, `run_validation_suite.sh`, `rivanna_validation_n100.slurm`.
+- `scripts/` — analysis pipeline: `analyze_mcmc_validation.py`, `compute_null_envelope.py`, `measure_acceptance_rates.py`, `plot_multistart_trace.py`, `within_fiber_test.py`, `run_validation_suite.sh`, `rivanna_validation_n100.slurm`.
 
 ## Compilation
 

@@ -13,8 +13,8 @@ given B and should be compared against this envelope rather than against 0.
 
 Usage:
     python3 compute_null_envelope.py \
-        --csv-in  PNAS/mcmc_validation/data/small_n_uniformity.csv \
-        --csv-out PNAS/mcmc_validation/data/small_n_null_envelope.csv \
+        --csv-in  mcmc_validation/data/small_n_uniformity.csv \
+        --csv-out mcmc_validation/data/small_n_null_envelope.csv \
         --replicates 2000 \
         --seed 0
 
@@ -34,9 +34,8 @@ from itertools import permutations
 import numpy as np
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", ".."))
-CODE_DIR = os.path.join(REPO_ROOT, "code")
-sys.path.insert(0, CODE_DIR)
+REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
+sys.path.insert(0, REPO_ROOT)
 
 from uniformity_test import _compute_all_sw_python  # noqa: E402
 

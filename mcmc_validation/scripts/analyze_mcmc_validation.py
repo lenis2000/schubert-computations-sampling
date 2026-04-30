@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Autocorrelation / ESS analysis for an MCMC validation run.
 
-Reads the exported outputs produced by ``code/bpd_mcmc`` in batch mode
+Reads the exported outputs produced by ``bpd_mcmc`` in batch mode
 (``perms_n<N>_B<B>*.txt``, optionally ``height_all_n<N>_B<B>*.txt`` and
 ``tile_counts_n<N>_B<B>*.txt``), computes a fixed list of scalar observables
 per sample, estimates lag-1 .. lag-``max-lag`` autocorrelation, applies the

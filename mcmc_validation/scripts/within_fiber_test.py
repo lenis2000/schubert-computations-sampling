@@ -2,7 +2,7 @@
 """
 Within-fiber uniformity test at small n.
 
-The small-n chi-squared test in code/uniformity_test.py only checks the
+The small-n chi-squared test in uniformity_test.py only checks the
 projection to the boundary permutation (did w appear with frequency
 proportional to Upsilon_w). A within-fiber bias -- preferring one RBPD
 over another while still hitting the correct marginal for w -- would
@@ -13,7 +13,7 @@ chi-squared and total-variation distance.
 
 Produce samples first with:
 
-  ./code/bpd_mcmc batch:4:<B> --thin <T> --seed <S> --export-grids \
+  ./bpd_mcmc batch:4:<B> --thin <T> --seed <S> --export-grids \
       --no-png --no-tikz --no-height
 
 Then run this script on the resulting grids file. At n=4 the state space
@@ -22,10 +22,10 @@ matrices), and B = 1,000,000 with thin = 1,000 is enough to detect
 sub-percent bias with power > 0.99 at alpha = 0.01.
 
 Usage:
-    python3 PNAS/mcmc_validation/scripts/within_fiber_test.py \
-        --grids code/20260422_111211_grids_n4_B1000000_geometric_se_identity_s42_t1.00K.txt \
+    python3 mcmc_validation/scripts/within_fiber_test.py \
+        --grids 20260422_111211_grids_n4_B1000000_geometric_se_identity_s42_t1.00K.txt \
         --n 4 \
-        [--csv-out PNAS/mcmc_validation/data/within_fiber_n4.csv]
+        [--csv-out mcmc_validation/data/within_fiber_n4.csv]
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ from collections import Counter
 
 
 # Expected total RBPD count at n, from sum_{w in S_n} Upsilon_w.
-# Computed by code/uniformity_test.py _compute_all_sw_python.
+# Computed by uniformity_test.py _compute_all_sw_python.
 # (Note: this is NOT the ASM count; ASMs at n=4 number 42, but one of
 # those is NOT a reduced BPD for any S_4 permutation.)
 RBPD_COUNT = {3: 7, 4: 41, 5: 393, 6: 6080, 7: 150371, 8: 5903710}

@@ -8,7 +8,7 @@ Consumes a directory tree produced by ``run_validation_suite.sh``:
 
 Each burn-in trace file is a whitespace table with columns ``step ell corner``
 (plus comment header lines starting with ``#``) written natively by
-``code/bpd_mcmc``. The ``corner`` statistic
+``bpd_mcmc``. The ``corner`` statistic
     #{i : i + w(i) > 2n - n/4}
 is the southeast-corner proxy used as the scalar "SE-boundary proxy" in the
 PNAS SI validation figure.

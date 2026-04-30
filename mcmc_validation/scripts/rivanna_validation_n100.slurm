@@ -11,7 +11,7 @@ set -euo pipefail
 #SBATCH --account=intprob
 #
 # Multi-start MCMC validation run at n=100 (Rivanna-only).
-# This file is the n=100 analogue of PNAS/mcmc_validation/scripts/run_validation_suite.sh.
+# This file is the n=100 analogue of mcmc_validation/scripts/run_validation_suite.sh.
 # It is intentionally NOT submitted by the validation-plan loop -- Leo sbatches it by hand.
 #
 # Matrix: 4 starts (w0, identity, rothe, random) x 3 seeds = 12 independent
@@ -21,11 +21,11 @@ set -euo pipefail
 #
 # After the job finishes, aggregate the outputs on the cluster or rsync the
 # run dirs back and run:
-#   python3 PNAS/mcmc_validation/scripts/plot_multistart_trace.py \
-#       --runs-dir PNAS/mcmc_validation/data/multistart_n100_runs \
+#   python3 mcmc_validation/scripts/plot_multistart_trace.py \
+#       --runs-dir mcmc_validation/data/multistart_n100_runs \
 #       --n 100 \
-#       --out-csv PNAS/mcmc_validation/data/multistart_n100_trace.csv \
-#       --out-pdf PNAS/mcmc_validation/img/multistart_n100.pdf
+#       --out-csv mcmc_validation/data/multistart_n100_trace.csv \
+#       --out-pdf mcmc_validation/img/multistart_n100.pdf
 
 module load gcc/14.2.0 libpng
 
@@ -41,7 +41,7 @@ SEEDS="${SEEDS:-9100 9101 9102}"
 
 # MPP3 layered optimum at n=100 is w(1, 2, 4, 11, 25, 57) (data_MPP3.tex:1251).
 # Concatenate reversed blocks exactly like
-# code/measure_acceptance_rates.py::build_layered_permutation.
+# mcmc_validation/scripts/measure_acceptance_rates.py::build_layered_permutation.
 ROTHE_CSV_N100="1,\
 3,2,\
 7,6,5,4,\
@@ -52,7 +52,7 @@ ROTHE_CSV_N100="1,\
 50,49,48,47,46,45,44"
 ROTHE_CSV_N100="$(echo "$ROTHE_CSV_N100" | tr -d ' ' | tr -d '\n')"
 
-RUN_ROOT="PNAS/mcmc_validation/data/multistart_n${N}_runs"
+RUN_ROOT="mcmc_validation/data/multistart_n${N}_runs"
 mkdir -p "$RUN_ROOT"
 
 STARTS=(w0 identity rothe random)
@@ -107,7 +107,7 @@ done
 # Compile inside the job so the binary is tuned to the allocated node.
 echo "Compiling bpd_mcmc for Rivanna..."
 g++ -O3 -std=c++17 -march=native -flto -fopenmp \
-    code/bpd_mcmc.cpp -o code/bpd_mcmc -lpng || {
+    bpd_mcmc.cpp -o bpd_mcmc -lpng || {
     echo "Compile failed" >&2
     exit 1
 }
@@ -129,7 +129,7 @@ run_one() {
     rm -rf "$rundir"
     mkdir -p "$rundir"
     echo "=== ${start_label} seed=${seed} ==="
-    (cd "$rundir" && ../../../../../code/bpd_mcmc "batch:${N}:${B}" \
+    (cd "$rundir" && ../../../../bpd_mcmc "batch:${N}:${B}" \
         --droop-dist "$DROOP_DIST" \
         --anchor "$ANCHOR" \
         --start "$start_spec" \
@@ -157,8 +157,8 @@ printf '%s\n' "$CURRENT_MANIFEST" > "$MANIFEST"
 
 echo
 echo "All chains done. Aggregate on your workstation with:"
-echo "  python3 PNAS/mcmc_validation/scripts/plot_multistart_trace.py \\"
+echo "  python3 mcmc_validation/scripts/plot_multistart_trace.py \\"
 echo "      --runs-dir $RUN_ROOT \\"
 echo "      --n $N \\"
-echo "      --out-csv PNAS/mcmc_validation/data/multistart_n${N}_trace.csv \\"
-echo "      --out-pdf PNAS/mcmc_validation/img/multistart_n${N}.pdf"
+echo "      --out-csv mcmc_validation/data/multistart_n${N}_trace.csv \\"
+echo "      --out-pdf mcmc_validation/img/multistart_n${N}.pdf"

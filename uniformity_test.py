@@ -60,7 +60,7 @@ _SW_CACHE = {}
 def _compute_all_sw_python(n):
     """Pure-Python cotransition-UP recurrence.
 
-    Matches the algorithm in code/schubert.cpp (find_cotrans_index +
+    Matches the algorithm in the repo's schubert.cpp (find_cotrans_index +
     is_bruhat_cover_up).  S_w0(1^n) = 1; for pi != w0 the first staircase
     position a (smallest i with (i+1) + pi[i] <= n in 1-indexed form) is
     used as a pivot row, and S_pi(1^n) = sum over b > a of S_{pi t_{a,b}}(1^n)
@@ -502,7 +502,7 @@ def parse_cli(argv):
 def main():
     if not os.path.exists(MCMC_BIN):
         print(f"Error: bpd_mcmc binary not found at {MCMC_BIN}")
-        print(f"Compile it first (see CLAUDE.md)")
+        print("Compile it first (see the top-level README.md)")
         sys.exit(1)
 
     # Default per-n sample budget (see header comment for power analysis).
