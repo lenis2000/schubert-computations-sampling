@@ -19,7 +19,11 @@ This repository contains the Schubert evaluator, the main MCMC sampler for reduc
 
 ### Validation and diagnostics
 
-- **`uniformity_test.py`** — Small-$n$ validation of the MCMC stationary distribution using chi-squared and total variation tests.
+- **`uniformity_test.py`** — Small-$n$ validation of the MCMC stationary distribution using chi-squared and total variation tests. Use `--all-starts --csv=...` to regenerate the small-$n$ matrix used in SI Sec.~4.
+
+- **`cayley_ball.py`** — BFS over the Cayley-distance ball around a permutation, evaluating $\mathfrak{S}_w(1^n)$ at every node. Backs the SI search-protocol claim that no counterexample exists within Cayley distance $4$ of the optimal layered permutation for $n = 14, 15, 16$.
+
+- **`julia/run_n17_check.jl`** — Independent Julia cross-check at $n=17$ via Anderson's [SchubertPolynomials.jl](https://github.com/pseudoeffective/SchubertPolynomials.jl) (function `nschub`). Verifies the certified C++ values for $w^*$, $u^*$, and the layered comparator $w(1,2,4,10)$ digit-for-digit. See `julia/README.md`.
 
 - **`bpd_connectivity_check.cpp`** — Verifies connectivity of the RBPD graph under reducedness-preserving flips (Conjecture 4.1 in the paper, verified for $n \le 8$).
 
@@ -40,6 +44,32 @@ This repository contains the Schubert evaluator, the main MCMC sampler for reduc
 - **`cftp_universality_check.cpp`** — Checks whether extremal-chain coalescence implies universal coalescence.
 
 - **`benchmark_suite.py`** — Python harness for comparing performance of descent/cotransition/transition with double/exact arithmetic, using the bundled layered-permutation data in `mpp_layered_permutations.csv`.
+
+## Artifacts and validation data
+
+The repository ships the raw evidence backing every numerical claim in the paper.
+
+### `artifacts/counterexamples_n17_20/`
+
+Certification trail for the disproof of the Merzon--Smirnov conjecture at $n = 17$ and the analogous counterexamples at $n = 18, 19, 20$:
+
+- `logs/` — sixteen raw logs of `./schubert --exact --{cotrans,transition,product}` runs, one per (permutation, method).
+- `certificate.csv` — long-form table with one row per (permutation, implementation), including each log's SHA-256 hash.
+- `certificate.tex` — auto-generated `tabular` snippet input by SI Sec.~F.
+- `build_certificate_csv.py` — verifier that re-parses every log, asserts digit-for-digit agreement between cotransition and transition, aborts on mismatch, and re-emits the CSV/TeX.
+- `README.md` — full submission recipe, including the Rivanna SLURM job for the $n = 19, 20$ runs.
+
+### `artifacts/n100_production/`
+
+Raw outputs of the $n = 100$ MCMC production run that produced the permuton, liquid-region, and height-fluctuation figures in SI Sec.~4. Run on Rivanna 2026-03-08 with seed 9200, geometric droops, burn-in $10^{10}$, thinning $5 \times 10^8$, $B = 10\,000$ samples across 40 parallel chains. Includes the rendered PNGs reproduced in the SI, all of `perms`, `perm_matrix`, `height_avg`, `height_dxdy`, `height_sum`, the burn-in trace, and the droop histogram.
+
+### `mcmc_validation/`
+
+Quantitative validation of the MCMC sampler (SI Sec.~4D):
+
+- `data/` — small-$n$ uniformity (chi-squared, TV distance), within-fiber test at $n=4$, acceptance rates broken down by move type and starting state, integrated autocorrelation times, ESS, and a multi-start coupling trace at $n=60$. CSVs and the matching `.tex` snippets used in SI Sec.~4D.
+- `img/multistart_n60.pdf` — rendered figure.
+- `scripts/` — analysis pipeline: `analyze_mcmc_validation.py`, `compute_null_envelope.py`, `plot_multistart_trace.py`, `within_fiber_test.py`, `run_validation_suite.sh`, `rivanna_validation_n100.slurm`.
 
 ## Compilation
 
