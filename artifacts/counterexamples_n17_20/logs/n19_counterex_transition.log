@@ -1,0 +1,11 @@
+# n=19 counterexample transition: local run killed at ~2150s wall.
+#
+# The --exact --transition run on the laptop filled the 128M memo
+# cap and throughput degraded from ~2M/s to ~195K/s without reaching
+# the base case. Computation was killed and the job redirected to
+# Rivanna (see ../rivanna_certify_n19_n20.slurm) with MEMO_HARD_CAP
+# raised to 2^28 (256M entries, ~25 GB exact-arith RAM).
+#
+# The cotransition cross-check at n=19 completed locally (see
+# n19_counterex_cotrans.log). The transition result will land from
+# Rivanna and overwrite this file.

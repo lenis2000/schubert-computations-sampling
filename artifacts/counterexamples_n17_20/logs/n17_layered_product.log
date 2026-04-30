@@ -1,0 +1,6 @@
+Layered permutation w(1,2,4,10) | n=17
+Method: product formula (exact)
+S_w = 3050684475186219300000
+Digits: 22
+f(n) = 0.246954
+Time: 0.000006s

@@ -1,0 +1,6 @@
+Layered permutation w(1,2,5,11) | n=19
+Method: product formula (exact)
+S_w = 2407690914026907331933110000
+Digits: 28
+f(n) = 0.251966
+Time: 0.000006s

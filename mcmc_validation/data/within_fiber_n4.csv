@@ -1,0 +1,2 @@
+n,total_samples,expected_cells,observed_distinct,missing_cells,expected_per_cell,min_count,max_count,chi2,df,p_value,tv_distance,worst_rel_dev,passed
+4,1000000,41,41,0,24390.2439,24089,24711,36.9702,40,0.607417,0.002402,0.013151,PASS

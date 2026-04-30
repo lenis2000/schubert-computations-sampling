@@ -1,0 +1,13 @@
+dist,start,runs,burnin_accept_pct_mean,burnin_accept_pct_min,burnin_accept_pct_max,burnin_droop_accept_pct_mean,burnin_local_accept_pct_mean,burnin_ell_mean
+geometric,identity,1,7.535,7.535,7.535,3.617,8.84,68
+geometric,rothe,1,7.551,7.551,7.551,3.623,8.86,76
+geometric,w0,1,7.552,7.552,7.552,3.626,8.861,71
+loguniform,identity,1,6.776,6.776,6.776,0.513,8.864,84
+loguniform,rothe,1,6.727,6.727,6.727,0.511,8.799,81
+loguniform,w0,1,6.782,6.782,6.782,0.512,8.873,90
+uniform,identity,1,6.589,6.589,6.589,0.793,8.52,78
+uniform,rothe,1,6.762,6.762,6.762,0.787,8.754,71
+uniform,w0,1,6.844,6.844,6.844,0.794,8.861,73
+revlog,identity,1,6.757,6.757,6.757,0.606,8.808,64
+revlog,rothe,1,6.84,6.84,6.84,0.6,8.921,86
+revlog,w0,1,6.804,6.804,6.804,0.6,8.872,80

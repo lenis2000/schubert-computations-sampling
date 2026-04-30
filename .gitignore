@@ -25,6 +25,13 @@ cftp_diagnostic
 benchmark_results/
 permutation_data/
 
+# Curated data / artifacts: these directories contain published evidence
+# (raw logs, CSV summaries, figures) backing the paper. Override the
+# generic ignores above.
+!artifacts/**
+!mcmc_validation/**
+!julia/n17_julia_check.log
+
 # Python
 __pycache__/
 *.pyc
