@@ -14,7 +14,10 @@
 //   --geom-p <P>     Geometric side-length parameter p (default: 0.5, mean side length 2)
 //   --geom-mean <M>  Geometric mean side length 1/p (default: 2)
 //   --anchor <A>     Droop anchor corner: nw or se (default: se)
-//   --start <S>      Starting state: identity or w0 (default: identity)
+//   --start <S>      Starting state: identity, w0, random, or rothe:<csv>
+//                    (default: identity). rothe:1,3,2,4,5 initialises the
+//                    Rothe BPD for the given permutation; random pre-burns
+//                    10*n^3 steps from w0 before stat collection begins.
 //   --collect-droop-dist <D>  Droop dist for collection phase (default: same as --droop-dist)
 //   --no-png         Suppress PNG output
 //   --no-tikz        Suppress TikZ output
@@ -39,6 +42,7 @@
 // -Ofast) have negligible effect. Do NOT use -flto with OpenMP on macOS (slow compile).
 
 #include <vector>
+#include <array>
 #include <memory>
 #include <random>
 #include <algorithm>
@@ -1083,6 +1087,19 @@ public:
         rebuildPermAndInv();
     }
 
+    // Initialize from an explicit permutation (1-indexed).
+    void initFromPerm(const std::vector<int>& w) {
+        state.initRothe(w);
+        computeFullEdgeColors();
+        rebuildPermAndInv();
+    }
+
+    // Burn-in without recording acceptance stats or burnin trace (used by
+    // --start=random to produce a random RBPD before the real run begins).
+    void stepN(int64_t steps) {
+        for (int64_t i = 0; i < steps; i++) step();
+    }
+
     // Smart LLS droop/undroop move via random rectangle proposal.
     // Pick a random cell and geometrically-distributed offset to form
     // a rectangle. Check if NW/SE corners form a valid droop
@@ -1291,7 +1308,8 @@ public:
                 }
             }
         }
-        burnin_trace_.push_back({steps, state.crossCount(), cornerCount()});
+        if (steps > 0 && steps % trace_interval != 0)
+            burnin_trace_.push_back({steps, state.crossCount(), cornerCount()});
         double elapsed = omp_get_wtime() - t0;
         if (!quiet)
             printf("\r  burn-in: 100%% (%s steps) in %.1fs (%.1fM/s)                    \n",
@@ -1837,6 +1855,40 @@ void writeMathematicaMatrix(const std::vector<int64_t>& matrix, int n, int B) {
     printf("Output written to: %s\n", filename); runlog_file(filename);
 }
 
+// One line per sample, six space-separated counts in tile-type order
+// 0=blank 1=cross 2=r-elbow 3=j-elbow 4=vert 5=horiz. Kept as a plain
+// whitespace-separated table (not Mathematica-style) so that numpy.loadtxt
+// and python's csv module can ingest it without post-processing.
+void writeTileCounts(const std::vector<std::array<int32_t, 6>>& counts, int n, int B) {
+    char filename[128];
+    snprintf(filename, sizeof(filename), "%stile_counts_n%d_B%d%s.txt", g_ts, n, B, g_suffix);
+    FILE* fp = fopen(filename, "w");
+    if (!fp) { fprintf(stderr, "Error: cannot open %s\n", filename); return; }
+    fprintf(fp, "# tile_counts file produced by bpd_mcmc\n");
+    fprintf(fp, "# columns: blank cross r_elbow j_elbow vert horiz (n=%d grid cells=%d)\n", n, n*n);
+    for (const auto& c : counts)
+        fprintf(fp, "%d %d %d %d %d %d\n", c[0], c[1], c[2], c[3], c[4], c[5]);
+    fclose(fp);
+    printf("Output written to: %s\n", filename); runlog_file(filename);
+}
+
+void writeGrids(const std::vector<std::vector<uint8_t>>& grids, int n, int B) {
+    char filename[128];
+    snprintf(filename, sizeof(filename), "%sgrids_n%d_B%d%s.txt", g_ts, n, B, g_suffix);
+    FILE* fp = fopen(filename, "w");
+    if (!fp) { fprintf(stderr, "Error: cannot open %s\n", filename); return; }
+    fprintf(fp, "# grids file produced by bpd_mcmc\n");
+    fprintf(fp, "# one line per sample: concatenated row-major tile codes (each 0-5), length n*n = %d chars\n", n*n);
+    fprintf(fp, "# tiles: 0=blank 1=cross 2=r_elbow 3=j_elbow 4=vert 5=horiz\n");
+    for (const auto& g : grids) {
+        for (uint8_t v : g)
+            fputc('0' + (v < 6 ? v : 0), fp);
+        fputc('\n', fp);
+    }
+    fclose(fp);
+    printf("Output written to: %s\n", filename); runlog_file(filename);
+}
+
 void writeMathematicaPerms(const std::vector<std::vector<int>>& perms, int n, int B) {
     char filename[128];
     snprintf(filename, sizeof(filename), "%sperms_n%d_B%d%s.txt", g_ts, n, B, g_suffix);
@@ -2003,13 +2055,16 @@ void printHelp(const char* prog) {
     printf("  --geom-p <P>     Geometric side-length parameter when using geometric dist (default: 0.5)\n");
     printf("  --geom-mean <M>  Geometric mean side length when using geometric dist (default: 2)\n");
     printf("  --anchor <A>     Droop anchor corner: nw or se (default: nw)\n");
-    printf("  --start <S>      Starting state: identity or w0 (default: identity)\n");
+    printf("  --start <S>      Starting state: identity, w0, random, or rothe:<csv> (default: identity)\n");
+    printf("                   rothe:1,3,2,4,5 initialises the Rothe BPD for the given permutation.\n");
+    printf("                   random pre-burns 10*n^3 steps from w0 before stat collection begins.\n");
     printf("  --restore <F>    Restore from checkpoint file (all chains, skip burn-in)\n");
     printf("  --threads <T>    Number of independent chains in batch mode (default: 6 macOS, 8 Linux)\n");
     printf("  --no-png         Suppress PNG output\n");
     printf("  --no-tikz        Suppress TikZ output\n");
     printf("  --no-height      Suppress height function output\n");
-    printf("  --checkpoint     Save checkpoint after burn-in (off by default)\n\n");
+    printf("  --checkpoint     Save checkpoint after burn-in (off by default)\n");
+    printf("  --export-grids   Dump full RBPD tile grid per sample (for small-n uniformity tests)\n\n");
     printf("Single mode outputs: PNG, TikZ, height function of sample.\n");
     printf("Batch mode outputs: perm matrix, all perms, permuton PNG, dxdy PNG,\n");
     printf("  permuton/dxdy overlay PNG, BPD PNG+TikZ of last sample, height sum/avg/dxdy.\n\n");
@@ -2020,7 +2075,83 @@ void printHelp(const char* prog) {
     printf("Stationary distribution: uniform on RBPDs (by detailed balance).\n");
 }
 
+// Parse a comma-separated 1-indexed permutation like "3,1,4,2,5".
+// Returns empty vector on failure.
+std::vector<int> parsePermCSV(const char* s, int expected_n) {
+    std::vector<int> out;
+    if (!s || !*s) return out;
+    const char* p = s;
+    while (*p) {
+        char* end = nullptr;
+        long v = strtol(p, &end, 10);
+        if (end == p) return {};
+        if (v < 1 || v > MAX_N) return {};
+        out.push_back((int)v);
+        p = end;
+        if (*p == ',') p++;
+        else if (*p == 0) break;
+        else return {};
+    }
+    if (expected_n > 0 && (int)out.size() != expected_n) return {};
+    std::vector<int> seen(out.size() + 1, 0);
+    for (int v : out) {
+        if (v < 1 || v > (int)out.size() || seen[v]) return {};
+        seen[v] = 1;
+    }
+    return out;
+}
+
+// Append a single JSON object line to acceptance.jsonl in the current directory.
+static void appendAcceptanceJsonl(const char* phase, int n, const MCMCStats& s,
+                                  const char* dist, const char* anchor,
+                                  const char* start, const char* start_detail,
+                                  uint32_t seed, int64_t burnin_steps, int64_t thin_steps,
+                                  int threads, int samples_collected) {
+    FILE* fp = fopen("acceptance.jsonl", "a");
+    if (!fp) { fprintf(stderr, "Warning: cannot open acceptance.jsonl for append\n"); return; }
+    time_t now = time(nullptr);
+    fprintf(fp,
+        "{\"ts\":%lld,\"phase\":\"%s\",\"n\":%d,\"dist\":\"%s\",\"anchor\":\"%s\","
+        "\"start\":\"%s\",\"start_detail\":\"%s\",\"seed\":%u,"
+        "\"burnin_steps\":%lld,\"thin_steps\":%lld,\"threads\":%d,\"samples\":%d,"
+        "\"proposals\":%lld,\"accepts\":%lld,"
+        "\"local_proposals\":%lld,\"local_accepts\":%lld,"
+        "\"droop_proposals\":%lld,\"droop_accepts\":%lld,"
+        "\"droop_down_accepts\":%lld,\"droop_up_accepts\":%lld,"
+        "\"reducedness_rejects\":%lld}\n",
+        (long long)now, phase, n, dist, anchor, start, start_detail, seed,
+        (long long)burnin_steps, (long long)thin_steps, threads, samples_collected,
+        (long long)s.proposals, (long long)s.accepts,
+        (long long)s.local_proposals, (long long)s.local_accepts,
+        (long long)s.droop_proposals, (long long)s.droop_accepts,
+        (long long)s.droop_down_accepts, (long long)s.droop_up_accepts,
+        (long long)s.reducedness_rejects);
+    fclose(fp);
+}
+
 int main(int argc, char* argv[]) {
+    // Pre-process argv: split "--name=value" tokens into two tokens "--name" "value"
+    // so downstream parsing (which expects space-separated flags) works uniformly.
+    static std::vector<std::string> argvStore;
+    std::vector<char*> argvNew;
+    argvStore.reserve(argc * 2);
+    argvNew.reserve(argc * 2);
+    for (int i = 0; i < argc; i++) {
+        const char* a = argv[i];
+        const char* eq = strchr(a, '=');
+        if (i > 0 && a[0] == '-' && a[1] == '-' && eq && eq != a + 2) {
+            argvStore.emplace_back(a, eq);
+            argvStore.emplace_back(eq + 1);
+            argvNew.push_back(const_cast<char*>(argvStore[argvStore.size() - 2].c_str()));
+            argvNew.push_back(const_cast<char*>(argvStore[argvStore.size() - 1].c_str()));
+        } else {
+            argvStore.emplace_back(a);
+            argvNew.push_back(const_cast<char*>(argvStore.back().c_str()));
+        }
+    }
+    argc = (int)argvNew.size();
+    argv = argvNew.data();
+
     if (argc < 2 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
         printHelp(argv[0]);
         return (argc < 2) ? 1 : 0;
@@ -2139,7 +2270,12 @@ int main(int argc, char* argv[]) {
     bool outputTikz = true;
     bool outputHeight = true;
     bool outputCheckpoint = false;
+    bool outputTileCounts = true;
+    bool outputGrids = false;   // full RBPD state per sample; for within-fiber uniformity tests at small n
     bool startW0 = false;
+    bool startRandom = false;
+    std::vector<int> startRothe;  // explicit permutation, empty if not set
+    std::string startDetail;      // free-text description of start state
     const char* restoreFile = nullptr;
 #ifdef __APPLE__
     int numThreads = 6;
@@ -2186,9 +2322,24 @@ int main(int argc, char* argv[]) {
         }
         else if (strcmp(argv[i], "--start") == 0 && i+1 < argc) {
             const char* s = argv[++i];
-            if (strcmp(s, "w0") == 0) startW0 = true;
-            else if (strcmp(s, "identity") == 0) startW0 = false;
-            else { fprintf(stderr, "Error: --start must be 'identity' or 'w0'\n"); return 1; }
+            // Last --start wins: clear all prior selections before applying
+            // this one so repeated flags don't accumulate conflicting state.
+            startW0 = false;
+            startRandom = false;
+            startRothe.clear();
+            startDetail.clear();
+            if (strcmp(s, "w0") == 0) { startW0 = true; startDetail = "w0"; }
+            else if (strcmp(s, "identity") == 0) { startW0 = false; startDetail = "identity"; }
+            else if (strcmp(s, "random") == 0) { startRandom = true; startDetail = "random"; }
+            else if (strncmp(s, "rothe:", 6) == 0) {
+                startRothe = parsePermCSV(s + 6, n > 0 ? n : 0);
+                if (startRothe.empty()) {
+                    fprintf(stderr, "Error: --start=rothe:<csv> must be a permutation of 1..n\n");
+                    return 1;
+                }
+                startDetail = s;
+            }
+            else { fprintf(stderr, "Error: --start must be 'identity', 'w0', 'random', or 'rothe:<csv>'\n"); return 1; }
         }
         else if (strcmp(argv[i], "--threads") == 0 && i+1 < argc)
             numThreads = atoi(argv[++i]);
@@ -2202,6 +2353,12 @@ int main(int argc, char* argv[]) {
             outputTikz = false;
         else if (strcmp(argv[i], "--no-height") == 0)
             outputHeight = false;
+        else if (strcmp(argv[i], "--export-tile-counts") == 0)
+            outputTileCounts = true;  // accepted for explicitness; default-on in batch mode
+        else if (strcmp(argv[i], "--no-tile-counts") == 0)
+            outputTileCounts = false;
+        else if (strcmp(argv[i], "--export-grids") == 0)
+            outputGrids = true;   // writes full n*n tile grid per sample; for small-n uniformity tests
         else if (strcmp(argv[i], "--checkpoint") == 0)
             outputCheckpoint = true;
         else if (strcmp(argv[i], "--restore") == 0 && i+1 < argc)
@@ -2233,7 +2390,10 @@ int main(int argc, char* argv[]) {
                          collectDist == DroopDist::LOGUNIFORM ? "loguniform" :
                          collectDist == DroopDist::REVLOGUNIFORM ? "revlog" : "geometric";
     const char* daName = droopAnchor == DroopAnchor::SE ? "se" : "nw";
-    const char* startName = startW0 ? "w0" : "identity";
+    const char* startName = !startRothe.empty() ? "rothe"
+                           : startRandom ? "random"
+                           : (startW0 ? "w0" : "identity");
+    if (startDetail.empty()) startDetail = startName;
     snprintf(g_suffix, sizeof(g_suffix), "_%s_%s_%s_s%u_t%s", ddName, daName, startName, seedVal, fmtNum(thin).c_str());
     if (collectDistSet && collectDist != droopDist) {
         printf("BPD MCMC: n=%d, B=%d, seed=%u, burnin=%s(%s), collect=%s, thin=%s, droop=%.0f%%(anchor=%s), start=%s, threads=%d\n",
@@ -2256,10 +2416,24 @@ int main(int argc, char* argv[]) {
             if (!mc.loadCheckpoint(restoreFile)) return 1;
         } else {
             mc.seed(seedVal);
-            mc.init(startW0);
+            if (!startRothe.empty()) {
+                mc.initFromPerm(startRothe);
+            } else if (startRandom) {
+                mc.init(/*startW0=*/true);
+                int64_t preBurn = 10LL * n * n * n;
+                printf("Randomizing start: running %lld pre-burn steps from w0...\n",
+                       (long long)preBurn);
+                mc.stepN(preBurn);
+                mc.resetStats();
+            } else {
+                mc.init(startW0);
+            }
             printf("Burning in...\n");
             mc.burnin(burnin);
             writeBurninTrace(mc.burninTrace(), n, startName, ddName, daName, geomP);
+            appendAcceptanceJsonl("burnin", n, mc.getStats(), ddName, daName,
+                                  startName, startDetail.c_str(), seedVal,
+                                  burnin, thin, 1, 0);
             if (outputCheckpoint) {
                 char cpfn[128];
                 { time_t now = time(nullptr); struct tm* t = localtime(&now);
@@ -2346,6 +2520,8 @@ int main(int argc, char* argv[]) {
             std::vector<std::vector<int>> localPerms;
             std::vector<int64_t> localSumHeight;
             std::vector<std::vector<int>> localAllHeights;  // per-sample height functions
+            std::vector<std::array<int32_t, 6>> localTileCounts;  // per-sample tile-type histogram
+            std::vector<std::vector<uint8_t>> localGrids;         // per-sample full RBPD grids (n*n bytes each)
             MCMCStats localStats;
             std::unique_ptr<BPDMcmc> chain;
         };
@@ -2409,7 +2585,16 @@ int main(int argc, char* argv[]) {
                 ThreadData& td = tdata[tid];
                 td.chain = std::make_unique<BPDMcmc>(n, droopProb, droopDist, droopAnchor, geomP);
                 td.chain->seed(seedVal + (uint64_t)tid * 1000003ULL);
-                td.chain->init(startW0);
+                if (!startRothe.empty()) {
+                    td.chain->initFromPerm(startRothe);
+                } else if (startRandom) {
+                    td.chain->init(/*startW0=*/true);
+                    int64_t preBurn = 10LL * n * n * n;
+                    td.chain->stepN(preBurn);
+                    td.chain->resetStats();
+                } else {
+                    td.chain->init(startW0);
+                }
                 td.chain->burnin(burnin, /*quiet=*/ tid != 0);
             }
 
@@ -2425,6 +2610,15 @@ int main(int argc, char* argv[]) {
                 printf(", local %.3f%%", 100.0*bs.local_accepts/bs.local_proposals);
             printf(", ell=%d\n", tdata[0].chain->current().crossCount());
             writeBurninTrace(tdata[0].chain->burninTrace(), n, startName, ddName, daName, geomP);
+
+            // Aggregate burn-in stats across all chains for JSON-lines log
+            {
+                MCMCStats burninAgg{};
+                for (int t = 0; t < T; t++) burninAgg += tdata[t].chain->getStats();
+                appendAcceptanceJsonl("burnin", n, burninAgg, ddName, daName,
+                                      startName, startDetail.c_str(), seedVal,
+                                      burnin, thin, T, 0);
+            }
 
             // Save all chains checkpoint (off by default, enable with --checkpoint)
             if (outputCheckpoint) {
@@ -2455,6 +2649,12 @@ int main(int argc, char* argv[]) {
             if (outputHeight) {
                 td.localSumHeight.assign(m * m, 0);
                 td.localAllHeights.resize(myB);
+            }
+            if (outputTileCounts) {
+                td.localTileCounts.assign(myB, std::array<int32_t, 6>{0,0,0,0,0,0});
+            }
+            if (outputGrids) {
+                td.localGrids.resize(myB);
             }
 
             // Switch droop distribution for collection if requested
@@ -2511,6 +2711,17 @@ int main(int argc, char* argv[]) {
                         td.localSumHeight[k] += sampleHeightLocal[k];
                     td.localAllHeights[b] = sampleHeightLocal;
                 }
+                if (outputTileCounts) {
+                    std::array<int32_t, 6> tc{0,0,0,0,0,0};
+                    const auto& grid = td.chain->current().data();
+                    for (uint8_t v : grid) {
+                        if (v < 6) tc[v]++;
+                    }
+                    td.localTileCounts[b] = tc;
+                }
+                if (outputGrids) {
+                    td.localGrids[b] = td.chain->current().data();  // copy of n*n bytes
+                }
                 actualMyB = b + 1;
                 completedAtomic.fetch_add(1, std::memory_order_relaxed);
             }
@@ -2519,6 +2730,10 @@ int main(int argc, char* argv[]) {
             td.localPerms.resize(actualMyB);
             if (outputHeight)
                 td.localAllHeights.resize(actualMyB);
+            if (outputTileCounts)
+                td.localTileCounts.resize(actualMyB);
+            if (outputGrids)
+                td.localGrids.resize(actualMyB);
 
             td.localStats = td.chain->getStats();
         }  // end parallel
@@ -2568,6 +2783,10 @@ int main(int argc, char* argv[]) {
         for (int t = 0; t < T; t++)
             aggStats += tdata[t].localStats;
 
+        appendAcceptanceJsonl("collection", n, aggStats, cdName, daName,
+                              startName, startDetail.c_str(), seedVal,
+                              burnin, thin, T, totalCompleted);
+
         printf("\nSampling acceptance: %.3f%% overall",
                aggStats.proposals > 0 ? 100.0*aggStats.accepts/aggStats.proposals : 0);
         if (aggStats.droop_proposals > 0)
@@ -2595,13 +2814,31 @@ int main(int argc, char* argv[]) {
         writeMathematicaMatrix(sumMatrix, n, totalCompleted);
         writeMathematicaPerms(allPerms, n, totalCompleted);
 
+        if (outputTileCounts) {
+            std::vector<std::array<int32_t, 6>> allTileCounts;
+            allTileCounts.reserve(totalCompleted);
+            for (int t = 0; t < T; t++)
+                for (auto& c : tdata[t].localTileCounts)
+                    allTileCounts.push_back(c);
+            writeTileCounts(allTileCounts, n, totalCompleted);
+        }
+
+        if (outputGrids) {
+            std::vector<std::vector<uint8_t>> allGrids;
+            allGrids.reserve(totalCompleted);
+            for (int t = 0; t < T; t++)
+                for (auto& g : tdata[t].localGrids)
+                    allGrids.push_back(std::move(g));
+            writeGrids(allGrids, n, totalCompleted);
+        }
+
 #if HAS_PNG
-        {
+        if (outputPng) {
             char permutonFn[128];
             snprintf(permutonFn, sizeof(permutonFn), "%spermuton_mcmc_n%d_B%d%s.png", g_ts, n, totalCompleted, g_suffix);
             renderPermutonPNG(sumMatrix, n, totalCompleted, permutonFn);
         }
-        if (aggStats.droop_accepts > 0) {
+        if (outputPng && aggStats.droop_accepts > 0) {
             char fn[128];
             snprintf(fn, sizeof(fn), "%sdroop_hist_n%d_B%d%s.png", g_ts, n, totalCompleted, g_suffix);
             renderDroopHistPNG(aggStats.droop_size_hist, aggStats.undroop_size_hist, n, fn);
@@ -2634,12 +2871,12 @@ int main(int argc, char* argv[]) {
                                 - avgHeight[(r+1)*m+c] + avgHeight[(r+1)*m+c+1];
             writeHeightDxDy(dxdy, n, totalCompleted);
 #if HAS_PNG
-            {
+            if (outputPng) {
                 char fn[128];
                 snprintf(fn, sizeof(fn), "%sheight_dxdy_n%d_B%d%s.png", g_ts, n, totalCompleted, g_suffix);
                 renderDxDyPNG(dxdy, n, fn);
             }
-            {
+            if (outputPng) {
                 char fn[128];
                 snprintf(fn, sizeof(fn), "%soverlay_n%d_B%d%s.png", g_ts, n, totalCompleted, g_suffix);
                 renderOverlayPNG(sumMatrix, dxdy, n, fn);
