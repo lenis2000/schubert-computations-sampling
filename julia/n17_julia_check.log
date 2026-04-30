@@ -1,0 +1,21 @@
+# Julia cross-check at n=17
+# Julia version: 1.12.6
+# SchubertPolynomials.jl: 0.1.0-DEV
+# Date: 2026-04-30 09:46:12 UTC
+
+  w*       (counterexample)
+    nschub   = 3272424600397137120000
+    expected = 3272424600397137120000
+    OK   (6.48 s)
+
+  u*       (counterexample)
+    nschub   = 3528445515842977489500
+    expected = 3528445515842977489500
+    OK   (6.26 s)
+
+  w(1,2,4,10) (layered max)
+    nschub   = 3050684475186219300000
+    expected = 3050684475186219300000
+    OK   (0.17 s)
+
+ALL THREE n=17 VALUES MATCH C++ CERTIFICATION (digit-for-digit).
