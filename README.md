@@ -47,7 +47,13 @@ This repository contains the Schubert evaluator, the main MCMC sampler for reduc
 
 ## Artifacts and validation data
 
-The repository ships the raw evidence backing every numerical claim in the paper.
+The repository ships the raw evidence behind the central numerical results in
+the paper — the certified counterexamples to the Merzon–Smirnov conjecture at
+$n = 17, 18, 19, 20$, the $n = 100$ MCMC run, and the MCMC sampler validation
+suite. Smaller-scale numerical claims (timing benchmarks, CFTP failure rates,
+Cayley-ball searches at $n = 14, 15, 16$, RBPD connectivity at $n \le 8$) are
+reproducible from the source files listed above; the corresponding scripts are
+deterministic up to seed and architecture.
 
 ### `artifacts/counterexamples_n17_20/`
 
